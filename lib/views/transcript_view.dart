@@ -677,15 +677,21 @@ class _TranscriptViewState extends State<TranscriptView>
     final style = theme.textTheme.labelMedium?.copyWith(
       color: theme.colorScheme.onSurfaceVariant,
     );
+    final canJumpToVideo =
+        !_isPlayerOpen && parliamentLiveSectionHasVideo(vm.primarySection);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
       child: Wrap(
         spacing: 14,
-        runSpacing: 2,
+        runSpacing: 6,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           if (metTime != null) Text('House met at $metTime', style: style),
           if (showDebateStart)
-            Text('Debate starts at $debateStartLabel', style: style),
+            _DebateStartNotch(
+              label: debateStartLabel,
+              onTap: canJumpToVideo ? _togglePlayer : null,
+            ),
         ],
       ),
     );
@@ -900,6 +906,51 @@ class _TranscriptViewState extends State<TranscriptView>
     if (h.contains('&')) return HouseColors.mixed;
     // Committee rooms — use a neutral dark teal.
     return HouseColors.committee;
+  }
+}
+
+/// A small pill-shaped marker — a "notch" — showing the debate's start time.
+/// Tappable to jump straight to the Parliament Live video when one is
+/// available and not already open.
+class _DebateStartNotch extends StatelessWidget {
+  final String label;
+  final VoidCallback? onTap;
+
+  const _DebateStartNotch({required this.label, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    return Material(
+      color: colors.secondaryContainer,
+      shape: const StadiumBorder(),
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const StadiumBorder(),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(8, 3, 10, 3),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.play_circle_fill,
+                size: 14,
+                color: colors.onSecondaryContainer,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                'Debate starts at $label',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: colors.onSecondaryContainer,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

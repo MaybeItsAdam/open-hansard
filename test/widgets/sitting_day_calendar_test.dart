@@ -196,7 +196,7 @@ void main() {
     expect(find.byType(TableCalendar<void>), findsOneWidget);
   });
 
-  testWidgets('recess days are marked distinctly and named in a legend',
+  testWidgets('recess days are marked distinctly and not named until tapped',
       (tester) async {
     // The 4th sits; the 11th–15th are a recess; the 7th is plain non-sitting.
     final recess = RecessPeriod(
@@ -222,8 +222,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // The legend names the recess visible in this month.
-    expect(find.text('November recess'), findsOneWidget);
+    // No standing legend — the name only surfaces in the banner on tap.
+    expect(find.text('November recess'), findsNothing);
 
     // A recess day is styled unlike both a sitting day and a plain
     // non-sitting day.
@@ -232,6 +232,108 @@ void main() {
     final recessDay = tester.widget<Text>(find.text('12'));
     expect(recessDay.style?.color, isNot(sitting.style?.color));
     expect(recessDay.style?.color, isNot(nonSitting.style?.color));
+  });
+
+  testWidgets('adjacent recess days render as one connected band',
+      (tester) async {
+    // The 11th–15th are a recess; the 4th sits and the 7th is plain
+    // non-sitting, so both sides of the band have a clear boundary.
+    final recess = RecessPeriod(
+      description: 'November recess',
+      startDate: DateTime(2024, 11, 11),
+      endDate: DateTime(2024, 11, 15),
+    );
+    final vm = _StubViewModel(
+      {DateTime(2024, 11, 4)},
+      recessDays: _recessDaysFor(DateTime(2024, 11), recess),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SittingDayCalendar(
+            viewModel: vm,
+            initialMonth: DateTime(2024, 11),
+            selectedDay: null,
+            lastDay: DateTime(2025, 1, 1),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    Container cellOf(String day) => tester.widget<Container>(
+          find.ancestor(
+            of: find.text(day),
+            matching: find.byType(Container),
+          ),
+        );
+
+    final start = cellOf('11').decoration as BoxDecoration; // period start
+    final middle = cellOf('13').decoration as BoxDecoration; // mid-band
+    final end = cellOf('15').decoration as BoxDecoration; // period end
+
+    // The band starts rounded on the left, is flat through the middle
+    // (cells abut with no gap), and rounds again at the end.
+    final startRadius = (start.borderRadius as BorderRadius);
+    expect(startRadius.topLeft, isNot(Radius.zero));
+    expect(startRadius.topRight, Radius.zero);
+
+    final middleRadius = (middle.borderRadius as BorderRadius);
+    expect(middleRadius.topLeft, Radius.zero);
+    expect(middleRadius.topRight, Radius.zero);
+
+    final endRadius = (end.borderRadius as BorderRadius);
+    expect(endRadius.topLeft, Radius.zero);
+    expect(endRadius.topRight, isNot(Radius.zero));
+  });
+
+  testWidgets(
+      'a recess day that is also an enabled sitting day does not give its '
+      'disabled neighbour a false connecting edge', (tester) async {
+    // One house recorded the 17th as recess while the other sat, so it's
+    // both a sitting day (enabled, rendered as a green pill via a builder
+    // other than disabledBuilder) and present in recessDaysInMonth. The
+    // 18th is genuinely in recess and disabled. The 18th must still render
+    // with a rounded left edge, since its "neighbour" isn't actually drawn
+    // as a band cell.
+    final recess = RecessPeriod(
+      description: 'November recess',
+      startDate: DateTime(2024, 11, 17),
+      endDate: DateTime(2024, 11, 20),
+    );
+    final recessDays = _recessDaysFor(DateTime(2024, 11), recess);
+    final vm = _StubViewModel(
+      {DateTime(2024, 11, 4), DateTime(2024, 11, 17)},
+      recessDays: recessDays,
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SittingDayCalendar(
+            viewModel: vm,
+            initialMonth: DateTime(2024, 11),
+            selectedDay: null,
+            lastDay: DateTime(2025, 1, 1),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // The 17th renders as an enabled sitting day, not through disabledBuilder.
+    final seventeenth = tester.widget<Text>(find.text('17'));
+    expect(seventeenth.style?.fontWeight, FontWeight.w600);
+
+    final eighteenth = tester.widget<Container>(
+      find.ancestor(
+        of: find.text('18'),
+        matching: find.byType(Container),
+      ),
+    );
+    final radius =
+        (eighteenth.decoration as BoxDecoration).borderRadius as BorderRadius;
+    expect(radius.topLeft, isNot(Radius.zero));
+    expect(radius.bottomLeft, isNot(Radius.zero));
   });
 
   testWidgets(
@@ -275,7 +377,7 @@ void main() {
     // recess's raw date range.
     await tester.tap(find.text('12'));
     await tester.pumpAndSettle();
-    expect(find.text('November recess'), findsNWidgets(2));
+    expect(find.text('November recess'), findsOneWidget);
     expect(
       tester.widget<Text>(find.text('18')).style?.color,
       plainNonSitting,
@@ -346,9 +448,8 @@ void main() {
     expect(result, isNull);
     expect(find.byType(TableCalendar<void>), findsOneWidget);
 
-    // The banner names the recess and its full range. The name now shows
-    // twice: once in the legend, once in the banner.
-    expect(find.text('November recess'), findsNWidgets(2));
+    // The banner names the recess and its full range.
+    expect(find.text('November recess'), findsOneWidget);
     expect(
       find.text('11–15 Nov 2024 · Parliament was not sitting'),
       findsOneWidget,
@@ -365,7 +466,7 @@ void main() {
     // rather than disappearing outright, so it can animate open again.
     await tester.tap(find.text('7'));
     await tester.pumpAndSettle();
-    expect(find.text('November recess'), findsNWidgets(2));
+    expect(find.text('November recess'), findsOneWidget);
     expect(
       find.text('11–15 Nov 2024 · Parliament was not sitting'),
       findsOneWidget,

@@ -436,18 +436,10 @@ class _DateSelectorViewState extends State<DateSelectorView> {
       padding: const EdgeInsets.only(bottom: 10),
       child: SizedBox(
         height: _debateCardHeight(item.durationMinutes),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _DebateTimeMark(startTimecode: item.startTimecode),
-            Expanded(
-              child: _HouseAccentCard(
-                house: item.house,
-                onTap: () => _navigateToTranscript(day, debateId: item.debateId),
-                child: _DebateCardContent(item: item, showVenue: showVenue),
-              ),
-            ),
-          ],
+        child: _HouseAccentCard(
+          house: item.house,
+          onTap: () => _navigateToTranscript(day, debateId: item.debateId),
+          child: _DebateCardContent(item: item, showVenue: showVenue),
         ),
       ),
     );
@@ -731,6 +723,11 @@ class _DebateCardContent extends StatelessWidget {
         final showSpeakers =
             height >= _speakersTier && item.topSpeakers.isNotEmpty;
         final showPie = height >= _pieTier && hasParties;
+        final rawStart = item.startTimecode;
+        final startTimeLabel =
+            (rawStart != null && rawStart.length >= 5)
+                ? rawStart.substring(0, 5)
+                : null;
 
         // Below the title, everything else is optional "extra" content whose
         // real height only loosely tracks the tier thresholds above (text
@@ -772,7 +769,22 @@ class _DebateCardContent extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (startTimeLabel != null) ...[
+                    Padding(
+                      padding: const EdgeInsets.only(top: 1),
+                      child: Text(
+                        startTimeLabel,
+                        style: Theme.of(context).textTheme.labelSmall
+                            ?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
                   Expanded(
                     // Even at 2 lines, long bill/motion titles can still be
                     // clipped — the Tooltip guarantees the full title is
@@ -1391,51 +1403,6 @@ class _FeedGroupHeader extends StatelessWidget {
                   ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
         ],
-      ),
-    );
-  }
-}
-
-/// A small, discrete start-time mark shown in the day view's left gutter,
-/// next to (not inside) its debate card. Renders nothing when the debate has
-/// no known start timecode, collapsing to zero width.
-class _DebateTimeMark extends StatelessWidget {
-  final String? startTimecode;
-
-  const _DebateTimeMark({required this.startTimecode});
-
-  static const double _width = 44;
-
-  @override
-  Widget build(BuildContext context) {
-    final start = startTimecode;
-    final label =
-        (start != null && start.length >= 5) ? start.substring(0, 5) : null;
-    if (label == null) return const SizedBox.shrink();
-
-    final theme = Theme.of(context);
-    return SizedBox(
-      width: _width,
-      child: Padding(
-        padding: const EdgeInsets.only(top: 10, right: 8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              label,
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 3),
-            Container(
-              width: 10,
-              height: 1.5,
-              color: theme.colorScheme.outlineVariant,
-            ),
-          ],
-        ),
       ),
     );
   }

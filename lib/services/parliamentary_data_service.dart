@@ -23,6 +23,13 @@ import 'database_service.dart';
 const Duration _membersCacheTtl = Duration(days: 30);
 const Duration _billsListCacheTtl = Duration(minutes: 30);
 
+/// How many bill detail requests to have in flight at once when resolving a
+/// coming-up sittings page. Firing one per bill (sometimes 30+) all at once
+/// shares bills-api.parliament.uk's connection budget across all of them, so
+/// individual requests stall and start hitting the 20s timeout; modest
+/// parallelism keeps throughput without starving requests.
+const int _billDetailConcurrency = 5;
+
 /// The high-level service that coordinates API calls with local SQLite caches.
 class ParliamentaryDataService {
   final DatabaseService _db;
@@ -124,9 +131,15 @@ class ParliamentaryDataService {
       }
     }
 
-    final details = await Future.wait(
-      billIds.map((id) => _billsApi.fetchBillDetail(id)),
-    );
+    // Fetch in concurrency-limited batches; billIds order is preserved since
+    // each batch is awaited (and appended) before the next one starts.
+    final details = <Map<String, dynamic>?>[];
+    for (var i = 0; i < billIds.length; i += _billDetailConcurrency) {
+      final batch = billIds.skip(i).take(_billDetailConcurrency);
+      details.addAll(
+        await Future.wait(batch.map((id) => _billsApi.fetchBillDetail(id))),
+      );
+    }
 
     final bills = <Map<String, dynamic>>[];
     for (var i = 0; i < billIds.length; i++) {

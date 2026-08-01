@@ -9,8 +9,9 @@ import '../viewmodels/date_selector_viewmodel.dart';
 /// A month-view calendar, shown as a modal bottom sheet, in which only days
 /// that actually have debates (sitting days) are selectable. Non-sitting days
 /// and future days are greyed out and cannot be tapped; days falling inside a
-/// named recess (e.g. summer recess, Christmas adjournment) get a distinct
-/// tint, with a legend under the grid naming the recess(es) in view. Recess
+/// named recess (e.g. summer recess, Christmas adjournment) are drawn as one
+/// continuous tinted band spanning the recess's dates (capped per calendar
+/// row, since a band can't visually continue across a row break). Recess
 /// highlighting never applies to days after today, even when the API has
 /// already published a future or still-ongoing recess.
 ///
@@ -166,17 +167,31 @@ class _SittingDayCalendarState extends State<SittingDayCalendar>
   RecessPeriod? _recessPeriodFor(DateTime day) =>
       _recessDays[DateTime(day.year, day.month, day.day)];
 
-  /// The distinct recess names visible in the focused month, in date order.
-  List<String> _visibleRecessNames() {
-    final ordered = _recessDays.entries.toList()
-      ..sort((a, b) => a.key.compareTo(b.key));
-    final names = <String>[];
-    for (final entry in ordered) {
-      if (!names.contains(entry.value.description)) {
-        names.add(entry.value.description);
-      }
+  /// The recess period to render [day] as part of, if any: the period
+  /// covering it per [_recessDays], falling back to [activeRecess] when it
+  /// covers [day] but [day] falls in an adjacent month not present in
+  /// [_recessDays] (only the focused month is loaded).
+  RecessPeriod? _displayPeriodFor(DateTime day, RecessPeriod? activeRecess) {
+    final period = _recessPeriodFor(day);
+    if (period != null) return period;
+    if (activeRecess != null &&
+        activeRecess.contains(day) &&
+        !day.isAfter(widget.lastDay)) {
+      return activeRecess;
     }
-    return names;
+    return null;
+  }
+
+  /// Mirrors `enabledDayPredicate` below (negated): whether [day] renders
+  /// through `disabledBuilder` at all. A day can sit in [_recessDays] (one
+  /// house recorded it as non-sitting) yet still be an enabled sitting day
+  /// for the house actually being browsed, or the selected day — both take
+  /// priority over `disabledBuilder` in TableCalendar's cell rendering, so a
+  /// band must not treat such a day as something it visually connects to.
+  bool _isDisabledDay(DateTime day) {
+    final d = DateTime(day.year, day.month, day.day);
+    if (d.isAfter(widget.lastDay)) return true;
+    return !_enabledDays.any((e) => isSameDay(e, d));
   }
 
   @override
@@ -203,7 +218,6 @@ class _SittingDayCalendarState extends State<SittingDayCalendar>
       color: scheme.onTertiaryContainer,
       fontWeight: FontWeight.w600,
     );
-    final recessNames = _visibleRecessNames();
     final activeRecess = _activeRecess;
     return SafeArea(
       child: Padding(
@@ -252,21 +266,52 @@ class _SittingDayCalendarState extends State<SittingDayCalendar>
                   calendarBuilders: CalendarBuilders(
                     // Recess days are always disabled (no sittings), so this
                     // only needs to restyle the disabled cell; returning null
-                    // falls back to the default disabled rendering. The
-                    // active-recess check runs on the period itself so the
-                    // highlight also covers its days in adjacent-month cells.
+                    // falls back to the default disabled rendering. Adjacent
+                    // recess days are drawn as one continuous band rather
+                    // than separate pills — rounded caps appear only at the
+                    // period's true start/end, or where a week row breaks
+                    // the band (TableCalendar lays out one week per row, so
+                    // a band can't visually continue across rows).
                     disabledBuilder: (context, day, focusedDay) {
-                      final isActive = (activeRecess?.contains(day) ?? false) &&
-                          !day.isAfter(widget.lastDay);
-                      if (!isActive && _recessPeriodFor(day) == null) {
-                        return null;
-                      }
+                      final period = _displayPeriodFor(day, activeRecess);
+                      if (period == null) return null;
+                      final isActive = identical(period, activeRecess);
+
+                      final isRowStart = day.weekday == DateTime.monday;
+                      final isRowEnd = day.weekday == DateTime.sunday;
+                      final prevDay = day.subtract(const Duration(days: 1));
+                      final nextDay = day.add(const Duration(days: 1));
+                      final connectsBefore = !isRowStart &&
+                          _isDisabledDay(prevDay) &&
+                          identical(
+                            _displayPeriodFor(prevDay, activeRecess),
+                            period,
+                          );
+                      final connectsAfter = !isRowEnd &&
+                          _isDisabledDay(nextDay) &&
+                          identical(
+                            _displayPeriodFor(nextDay, activeRecess),
+                            period,
+                          );
+
+                      const cap = Radius.circular(18);
+                      const flat = Radius.zero;
                       return Container(
-                        margin: const EdgeInsets.all(6),
+                        margin: EdgeInsets.fromLTRB(
+                          connectsBefore ? 0 : 4,
+                          6,
+                          connectsAfter ? 0 : 4,
+                          6,
+                        ),
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           color: isActive ? activeRecessFill : recessFill,
-                          shape: BoxShape.circle,
+                          borderRadius: BorderRadius.only(
+                            topLeft: connectsBefore ? flat : cap,
+                            bottomLeft: connectsBefore ? flat : cap,
+                            topRight: connectsAfter ? flat : cap,
+                            bottomRight: connectsAfter ? flat : cap,
+                          ),
                         ),
                         child: Text(
                           '${day.day}',
@@ -305,36 +350,6 @@ class _SittingDayCalendarState extends State<SittingDayCalendar>
                     unawaited(_loadMonth(_focusedMonth));
                   },
                 ),
-                if (recessNames.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-                    child: Wrap(
-                      spacing: 16,
-                      runSpacing: 4,
-                      alignment: WrapAlignment.center,
-                      children: [
-                        for (final name in recessNames)
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 10,
-                                height: 10,
-                                decoration: BoxDecoration(
-                                  color: recessFill,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                name,
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                            ],
-                          ),
-                      ],
-                    ),
-                  ),
               ],
             ),
             if (_loading)
