@@ -1,3 +1,10 @@
+## [0.7.2](https://github.com/MaybeItsSoftware/open-parliament/compare/v0.7.1...v0.7.2) (2026-08-01)
+
+
+### Bug Fixes
+
+* timestamps in debates, concurrency in bills, reccess indicators ([ed6b60b](https://github.com/MaybeItsSoftware/open-parliament/commit/ed6b60b0d39555b0bd3bd6d919a9ec0d4ee28137))
+
 ## [0.7.1](https://github.com/MaybeItsSoftware/open-parliament/compare/v0.7.0...v0.7.1) (2026-07-22)
 
 
