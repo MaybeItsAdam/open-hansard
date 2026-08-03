@@ -1038,6 +1038,54 @@ class BillsApiService {
     }
   }
 
+  /// Fetches bills for the timeline view, sorted chronologically.
+  /// Defaults to `DateUpdatedAscending` (past at top -> going down to today).
+  Future<List<Map<String, dynamic>>> fetchBillsTimeline({
+    int skip = 0,
+    int take = 40,
+    bool ascending = true,
+    String? house,
+    bool actsOnly = false,
+    String? searchTerm,
+  }) async {
+    final queryParams = <String, String>{
+      'SortOrder': ascending ? 'DateUpdatedAscending' : 'DateUpdatedDescending',
+      'Skip': skip.toString(),
+      'Take': take.toString(),
+    };
+    if (house != null && house.isNotEmpty && house != 'All') {
+      queryParams['CurrentHouse'] = house;
+    }
+    if (searchTerm != null && searchTerm.trim().isNotEmpty) {
+      queryParams['SearchTerm'] = searchTerm.trim();
+    }
+    final uri = Uri.parse(_baseUrl).replace(queryParameters: queryParams);
+    try {
+      final response = await _client.getTimed(
+        uri,
+        headers: {'Accept': 'application/json'},
+      );
+      if (response.statusCode != 200) return const [];
+      final body = json.decode(response.body);
+      final items = (body is Map<String, dynamic>) ? body['items'] : null;
+      if (items is! List) return const [];
+      final list = items.whereType<Map<String, dynamic>>().toList();
+      if (actsOnly) {
+        return list.where((item) {
+          final isAct = item['isAct'] == true;
+          final currentStage = item['currentStage'] as Map<String, dynamic>?;
+          final stageDesc = currentStage?['description'] as String? ?? '';
+          return isAct || stageDesc.toLowerCase().contains('royal assent');
+        }).toList();
+      }
+      return list;
+    } catch (e, st) {
+      _reportSilentFailure(e, st);
+      return const [];
+    }
+  }
+
+
   /// Fetches full detail for the bill identified by [id], or `null` on failure.
   /// Cached for [_billDetailCacheTtl] since a bill's own record changes
   /// infrequently and is often re-requested (list views, detail page).

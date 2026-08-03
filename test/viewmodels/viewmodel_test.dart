@@ -14,6 +14,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:open_hansard/utils/party_colors.dart' as party_util;
 import 'package:open_hansard/viewmodels/bill_viewmodel.dart';
 import 'package:open_hansard/viewmodels/bills_list_viewmodel.dart';
+import 'package:open_hansard/viewmodels/bills_timeline_viewmodel.dart';
 import 'package:open_hansard/viewmodels/constituency_map_viewmodel.dart';
 import 'package:open_hansard/viewmodels/constituency_viewmodel.dart';
 import 'package:open_hansard/viewmodels/council_history_viewmodel.dart';
@@ -77,6 +78,7 @@ class _FakeParliamentaryDataService implements ParliamentaryDataService {
   List<Map<String, dynamic>> billStagesResult = const [];
   List<Map<String, dynamic>> billNewsResult = const [];
   List<Map<String, dynamic>> recentBillsResult = const [];
+  List<Map<String, dynamic>> billsTimelineResult = const [];
   List<Map<String, dynamic>> searchBillsResult = const [];
   List<Map<String, dynamic>> cachedDebateResults = const [];
 
@@ -86,6 +88,17 @@ class _FakeParliamentaryDataService implements ParliamentaryDataService {
   @override
   Future<List<Map<String, dynamic>>> fetchRecentBills({int skip = 0, int take = 40}) async =>
       recentBillsResult;
+
+  @override
+  Future<List<Map<String, dynamic>>> fetchBillsTimeline({
+    int skip = 0,
+    int take = 40,
+    bool ascending = true,
+    String? house,
+    bool actsOnly = false,
+    String? searchTerm,
+  }) async =>
+      billsTimelineResult;
 
   @override
   Future<List<Map<String, dynamic>>> fetchComingUpBills({int skip = 0, int take = 50}) async => [];
@@ -2089,6 +2102,89 @@ void main() {
 
       expect(vm.bills, isEmpty);
       expect(vm.error, isNotNull);
+      vm.dispose();
+    });
+  });
+
+  // ─── BillsTimelineViewModel tests ──────────────────────────────────────────
+
+  group('BillsTimelineViewModel', () {
+    late _FakeParliamentaryDataService fakeService;
+
+    setUp(() {
+      fakeService = _FakeParliamentaryDataService();
+    });
+
+    test('load parses timeline items, acts and stage descriptions correctly', () async {
+      fakeService.billsTimelineResult = [
+        {
+          'billId': 101,
+          'shortTitle': 'Alcohol Labelling Act 2007',
+          'currentHouse': 'Lords',
+          'lastUpdate': '2007-10-10T09:11:00',
+          'isAct': true,
+          'currentStage': {'description': 'Royal Assent'},
+        },
+        {
+          'billId': 102,
+          'shortTitle': 'Renters Reform Bill',
+          'currentHouse': 'Commons',
+          'lastUpdate': '2024-03-01T10:00:00',
+          'isAct': false,
+          'currentStage': {'description': '2nd reading'},
+        },
+      ];
+
+      final vm = BillsTimelineViewModel(fakeService);
+      await vm.load();
+
+      expect(vm.bills, hasLength(2));
+      expect(vm.bills[0].id, 101);
+      expect(vm.bills[0].isAct, isTrue);
+      expect(vm.bills[1].id, 102);
+      expect(vm.bills[1].isAct, isFalse);
+      expect(vm.bills[1].stageDescription, '2nd reading');
+      expect(vm.ascending, isTrue);
+      expect(vm.error, isNull);
+      vm.dispose();
+    });
+
+    test('toggleOrder toggles ascending direction and reloads', () async {
+      fakeService.billsTimelineResult = [
+        {
+          'billId': 200,
+          'shortTitle': 'Test Bill',
+          'currentHouse': 'Commons',
+        },
+      ];
+
+      final vm = BillsTimelineViewModel(fakeService);
+      expect(vm.ascending, isTrue);
+
+      vm.toggleOrder();
+      expect(vm.ascending, isFalse);
+
+      await vm.load();
+      expect(vm.bills, hasLength(1));
+      vm.dispose();
+    });
+
+    test('setHouseFilter and setActsOnly update filters', () async {
+      fakeService.billsTimelineResult = [
+        {
+          'billId': 300,
+          'shortTitle': 'Filtered Bill',
+          'currentHouse': 'Lords',
+        },
+      ];
+
+      final vm = BillsTimelineViewModel(fakeService);
+      vm.setHouseFilter('Lords');
+      expect(vm.houseFilter, 'Lords');
+
+      vm.setActsOnly(true);
+      expect(vm.actsOnly, isTrue);
+
       vm.dispose();
     });
   });

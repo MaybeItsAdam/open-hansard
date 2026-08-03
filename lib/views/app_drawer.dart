@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'bills_list_view.dart';
+import 'bills_timeline_view.dart';
 import 'constituency_map_view.dart';
 import 'date_selector_view.dart';
 import 'house_seating_view.dart';
@@ -9,7 +10,7 @@ import 'search_view.dart';
 import 'settings_view.dart';
 
 /// The top-level sections reachable from the navigation drawer.
-enum AppDestination { debates, search, bills, map, seating, saved }
+enum AppDestination { debates, search, bills, billsTimeline, map, seating, saved }
 
 /// Shared navigation drawer for the app's main views.
 ///
@@ -70,6 +71,12 @@ class AppDrawer extends StatelessWidget {
               icon: Icons.article_outlined,
               label: 'Recent Bills',
               destination: AppDestination.bills,
+            ),
+            _tile(
+              context,
+              icon: Icons.timeline_outlined,
+              label: 'Bills Timeline',
+              destination: AppDestination.billsTimeline,
             ),
             _tile(
               context,
@@ -144,6 +151,8 @@ class AppDrawer extends StatelessWidget {
         _replaceWith(context, const SearchView());
       case AppDestination.bills:
         _replaceWith(context, const BillsListView());
+      case AppDestination.billsTimeline:
+        _replaceWith(context, const BillsTimelineView());
       case AppDestination.map:
         _replaceWith(context, const ConstituencyMapView());
       case AppDestination.seating:
@@ -155,6 +164,7 @@ class AppDrawer extends StatelessWidget {
         );
     }
   }
+
 
   void _replaceWith(BuildContext context, Widget view) {
     Navigator.of(context).pushReplacement(

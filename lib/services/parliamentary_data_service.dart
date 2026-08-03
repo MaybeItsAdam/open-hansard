@@ -101,6 +101,25 @@ class ParliamentaryDataService {
     return bills;
   }
 
+  Future<List<Map<String, dynamic>>> fetchBillsTimeline({
+    int skip = 0,
+    int take = 40,
+    bool ascending = true,
+    String? house,
+    bool actsOnly = false,
+    String? searchTerm,
+  }) {
+    return _billsApi.fetchBillsTimeline(
+      skip: skip,
+      take: take,
+      ascending: ascending,
+      house: house,
+      actsOnly: actsOnly,
+      searchTerm: searchTerm,
+    );
+  }
+
+
   Future<List<Map<String, dynamic>>> fetchComingUpBills({int skip = 0, int take = 50}) async {
     if (skip == 0) {
       final cached = _comingUpBillsCache;

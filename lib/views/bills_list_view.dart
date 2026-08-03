@@ -8,6 +8,7 @@ import '../utils/house_colors.dart';
 import '../viewmodels/bills_list_viewmodel.dart';
 import 'app_drawer.dart';
 import 'bill_view.dart';
+import 'bills_timeline_view.dart';
 
 /// Main view listing the most recently updated bills before Parliament.
 class BillsListView extends StatefulWidget {
@@ -61,6 +62,15 @@ class _BillsListViewState extends State<BillsListView> {
           ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.timeline_outlined),
+            tooltip: "Bills Timeline",
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const BillsTimelineView(),
+              ),
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 8),
             child: SegmentedButton<bool>(
