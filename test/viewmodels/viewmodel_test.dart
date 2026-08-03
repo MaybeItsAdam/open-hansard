@@ -2115,7 +2115,7 @@ void main() {
       fakeService = _FakeParliamentaryDataService();
     });
 
-    test('load parses and reverses timeline items (oldest top, newest bottom)', () async {
+    test('load parses timeline items (newest at index 0 for reverse timeline)', () async {
       fakeService.billsTimelineResult = [
         {
           'billId': 101,
@@ -2139,15 +2139,15 @@ void main() {
       await vm.load();
 
       expect(vm.bills, hasLength(2));
-      // Reversed: older at index 0, newest at index 1 (bottom)
-      expect(vm.bills[0].id, 102);
-      expect(vm.bills[1].id, 101);
+      // API order: newest at index 0 (rendered at bottom of reverse ListView)
+      expect(vm.bills[0].id, 101);
+      expect(vm.bills[1].id, 102);
       expect(vm.actsOnly, isTrue);
       expect(vm.error, isNull);
       vm.dispose();
     });
 
-    test('loadMore prepends older items to top of list when scrolling UP', () async {
+    test('loadMore appends older items to end of list for reverse ListView', () async {
       fakeService.billsTimelineResult = List.generate(
         40,
         (i) => {
@@ -2175,8 +2175,8 @@ void main() {
       final added = await vm.loadMore();
       expect(added, isTrue);
       expect(vm.bills, hasLength(41));
-      // Older item prepended at index 0
-      expect(vm.bills[0].id, 999);
+      // Older item appended at end of list (rendered higher up in reverse ListView)
+      expect(vm.bills.last.id, 999);
       vm.dispose();
     });
 

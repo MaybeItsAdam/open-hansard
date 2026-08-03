@@ -9,9 +9,9 @@ import '../viewmodels/bills_timeline_viewmodel.dart';
 import 'app_drawer.dart';
 import 'bill_view.dart';
 
-/// Interactive timeline screen displaying UK Acts of Parliament (Royal Assent).
-/// Starts at the bottom with the latest Acts, allowing the user to scroll UP
-/// indefinitely into historical legislation.
+/// Timeline-first screen displaying UK Acts of Parliament (Royal Assent).
+/// Starts at the bottom of the screen with the latest 2026 Acts, allowing
+/// the user to scroll UP indefinitely into historical legislation.
 class BillsTimelineView extends StatefulWidget {
   const BillsTimelineView({super.key});
 
@@ -24,30 +24,13 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
   final _scrollController = ScrollController();
   final _searchController = TextEditingController();
   Timer? _debounceTimer;
-  bool _hasScrolledToBottomInitially = false;
 
   @override
   void initState() {
     super.initState();
     _vm = BillsTimelineViewModel(context.read<ParliamentaryDataService>());
     _scrollController.addListener(_onScroll);
-    unawaited(_loadInitialData());
-  }
-
-  Future<void> _loadInitialData() async {
-    await _vm.load();
-    if (mounted && _vm.bills.isNotEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _scrollToBottom();
-      });
-    }
-  }
-
-  void _scrollToBottom() {
-    if (_scrollController.hasClients) {
-      _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
-      _hasScrolledToBottomInitially = true;
-    }
+    unawaited(_vm.load());
   }
 
   @override
@@ -62,40 +45,19 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
 
   void _onScroll() {
     if (!_scrollController.hasClients) return;
-    // Trigger loadMore (fetching older past Acts) when user scrolls UP near top
-    if (_scrollController.position.pixels <= 250 &&
+    // Trigger loadMore (fetching older past Acts up top) when scrolling UP near maxScrollExtent
+    if (_scrollController.position.pixels >=
+            _scrollController.position.maxScrollExtent - 250 &&
         !_vm.isLoadingMore &&
         _vm.hasMore) {
-      _fetchOlderActs();
-    }
-  }
-
-  Future<void> _fetchOlderActs() async {
-    if (!_scrollController.hasClients) return;
-    final oldMaxScroll = _scrollController.position.maxScrollExtent;
-    final oldPixels = _scrollController.position.pixels;
-
-    final added = await _vm.loadMore();
-
-    if (added && mounted) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_scrollController.hasClients) {
-          final newMaxScroll = _scrollController.position.maxScrollExtent;
-          final delta = newMaxScroll - oldMaxScroll;
-          if (delta > 0) {
-            _scrollController.jumpTo(oldPixels + delta);
-          }
-        }
-      });
+      unawaited(_vm.loadMore());
     }
   }
 
   void _onSearchChanged(String value) {
     _debounceTimer?.cancel();
     _debounceTimer = Timer(const Duration(milliseconds: 400), () {
-      _hasScrolledToBottomInitially = false;
       _vm.setSearchQuery(value);
-      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
     });
   }
 
@@ -122,27 +84,12 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
             ),
           ],
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.vertical_align_bottom),
-            tooltip: "Jump to Latest Acts (Bottom)",
-            onPressed: _scrollToBottom,
-          ),
-        ],
       ),
       drawer: const AppDrawer(current: AppDestination.billsTimeline),
       body: ChangeNotifierProvider.value(
         value: _vm,
         child: Consumer<BillsTimelineViewModel>(
           builder: (context, vm, _) {
-            if (!vm.isLoading &&
-                vm.bills.isNotEmpty &&
-                !_hasScrolledToBottomInitially) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                _scrollToBottom();
-              });
-            }
-
             return Column(
               children: [
                 _buildHeaderControls(context, vm, theme),
@@ -152,11 +99,7 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
                       : vm.bills.isEmpty
                           ? _buildEmpty(context, vm)
                           : RefreshIndicator(
-                              onRefresh: () async {
-                                _hasScrolledToBottomInitially = false;
-                                await vm.load();
-                                _scrollToBottom();
-                              },
+                              onRefresh: vm.load,
                               child: _buildTimelineList(context, vm, theme),
                             ),
                 ),
@@ -197,9 +140,7 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
                       icon: const Icon(Icons.clear, size: 18),
                       onPressed: () {
                         _searchController.clear();
-                        _hasScrolledToBottomInitially = false;
                         vm.setSearchQuery('');
-                        WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
                       },
                     )
                   : null,
@@ -222,16 +163,22 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
+                // Direction Indicator Chip
+                const Chip(
+                  avatar: Icon(Icons.south, size: 14, color: Colors.amber),
+                  label: Text(
+                    "Latest at Bottom · Scroll UP for Older",
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                  ),
+                  visualDensity: VisualDensity.compact,
+                ),
+                const SizedBox(width: 8),
                 // Royal Assent Only Chip
                 FilterChip(
-                  avatar: const Icon(Icons.gavel, size: 16, color: Colors.amber),
-                  label: const Text("Royal Assent (Acts of Parliament)"),
+                  avatar: const Icon(Icons.gavel, size: 14, color: Colors.amber),
+                  label: const Text("Royal Assent (Acts)"),
                   selected: vm.actsOnly,
-                  onSelected: (val) {
-                    _hasScrolledToBottomInitially = false;
-                    vm.setActsOnly(val);
-                    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
-                  },
+                  onSelected: (val) => vm.setActsOnly(val),
                   visualDensity: VisualDensity.compact,
                 ),
                 const SizedBox(width: 8),
@@ -244,11 +191,7 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
                       label: Text(h),
                       selected: isSelected,
                       onSelected: (sel) {
-                        if (sel) {
-                          _hasScrolledToBottomInitially = false;
-                          vm.setHouseFilter(h);
-                          WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
-                        }
+                        if (sel) vm.setHouseFilter(h);
                       },
                       visualDensity: VisualDensity.compact,
                     ),
@@ -262,73 +205,92 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
     );
   }
 
+  /// Builds the timeline-first list anchored at the bottom using [reverse: true].
   Widget _buildTimelineList(
     BuildContext context,
     BillsTimelineViewModel vm,
     ThemeData theme,
   ) {
+    final totalCount = vm.bills.length + (vm.hasMore ? 1 : 0);
+
     return ListView.builder(
       controller: _scrollController,
+      reverse: true, // Index 0 is at bottom (2026 Acts), higher index at top (older Acts)
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-      itemCount: vm.bills.length + (vm.hasMore ? 1 : 0),
+      itemCount: totalCount,
       itemBuilder: (context, i) {
-        // Top spinner when loading older Acts up top
-        if (vm.hasMore && i == 0) {
+        // Top loading indicator when scrolling UP towards maxScrollExtent
+        if (vm.hasMore && i == vm.bills.length) {
           return const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
+            padding: EdgeInsets.symmetric(vertical: 24),
             child: Center(
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
+              child: Column(
+                children: [
+                  SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2.5),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    "Loading older historical Acts…",
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
               ),
             ),
           );
         }
 
-        final billIndex = vm.hasMore ? i - 1 : i;
-        final bill = vm.bills[billIndex];
-        final prevBill = billIndex > 0 ? vm.bills[billIndex - 1] : null;
+        final bill = vm.bills[i];
+        final nextBillInHistory = (i + 1 < vm.bills.length) ? vm.bills[i + 1] : null;
 
         final currentYear = bill.lastUpdate?.year;
-        final prevYear = prevBill?.lastUpdate?.year;
-        final showYearHeader = currentYear != null && currentYear != prevYear;
+        final nextYear = nextBillInHistory?.lastUpdate?.year;
+        final showYearDividerAbove = currentYear != null &&
+            nextYear != null &&
+            currentYear != nextYear;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (showYearHeader) _buildYearHeader(context, currentYear, theme),
-            _buildTimelineItemCard(
-              context,
-              bill,
-              theme,
-              isLast: billIndex == vm.bills.length - 1,
-            ),
+            // Act Card popping up on timeline
+            _buildTimelineItem(context, bill, theme),
+            // Year Divider on timeline spine as we move into an older year higher up
+            if (showYearDividerAbove)
+              _buildYearDivider(context, nextYear, theme),
           ],
         );
       },
     );
   }
 
-  Widget _buildYearHeader(BuildContext context, int year, ThemeData theme) {
+  Widget _buildYearDivider(BuildContext context, int year, ThemeData theme) {
     return Padding(
-      padding: const EdgeInsets.only(top: 16, bottom: 8),
+      padding: const EdgeInsets.symmetric(vertical: 16),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.amber.shade700,
-              borderRadius: BorderRadius.circular(16),
+              color: Colors.amber.shade800,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.amber.shade900.withValues(alpha: 0.3),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.history, size: 14, color: Colors.white),
-                const SizedBox(width: 4),
+                const Icon(Icons.history, size: 16, color: Colors.white),
+                const SizedBox(width: 6),
                 Text(
                   "$year",
-                  style: theme.textTheme.titleSmall?.copyWith(
+                  style: theme.textTheme.titleMedium?.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
                   ),
@@ -336,10 +298,18 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
               ],
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 12),
           Expanded(
-            child: Divider(
-              color: Colors.amber.shade700.withValues(alpha: 0.4),
+            child: Container(
+              height: 2,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.amber.shade800,
+                    theme.colorScheme.outlineVariant.withValues(alpha: 0.2),
+                  ],
+                ),
+              ),
             ),
           ),
         ],
@@ -347,96 +317,114 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
     );
   }
 
-  Widget _buildTimelineItemCard(
+  /// Builds a single timeline node & bill pop-up card along the timeline spine.
+  Widget _buildTimelineItem(
     BuildContext context,
     BillTimelineItem bill,
-    ThemeData theme, {
-    required bool isLast,
-  }) {
+    ThemeData theme,
+  ) {
     final hColor = _houseColor(bill.house);
-
-    // Royal Assent Node styling
-    const nodeIcon = Icons.gavel;
-
     final dateStr = bill.lastUpdate != null ? _formatDate(bill.lastUpdate!) : null;
 
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Timeline Axis (Line + Node Dot)
+          // ─── Vertical Timeline Spine & Date Node ─────────────────────────
           SizedBox(
-            width: 32,
+            width: 44,
             child: Stack(
               alignment: Alignment.topCenter,
               children: [
-                // Connecting Vertical Line
+                // Continuous Vertical Timeline Line
                 Positioned(
                   top: 0,
                   bottom: 0,
                   child: Container(
-                    width: 2,
-                    color: Colors.amber.shade700.withValues(alpha: 0.5),
+                    width: 3,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.amber.shade700,
+                          Colors.amber.shade600,
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-                // Node Dot/Icon
+                // Timeline Date Node Icon
                 Container(
-                  margin: const EdgeInsets.only(top: 10),
-                  width: 24,
-                  height: 24,
+                  margin: const EdgeInsets.only(top: 14),
+                  width: 28,
+                  height: 28,
                   decoration: BoxDecoration(
-                    color: Colors.amber.shade900,
+                    color: Colors.amber.shade800,
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.amber.shade300, width: 2),
+                    border: Border.all(color: Colors.amber.shade200, width: 2.5),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.amber.shade900.withValues(alpha: 0.4),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
-                  child: const Icon(nodeIcon, size: 12, color: Colors.white),
+                  child: const Icon(Icons.gavel, size: 14, color: Colors.white),
                 ),
               ],
             ),
           ),
           const SizedBox(width: 8),
-          // Content Card
+          // ─── Bill Pop-Up Card Branching off Timeline ──────────────────────
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.only(bottom: 14),
               child: Card(
                 elevation: 2,
+                shadowColor: Colors.amber.shade900.withValues(alpha: 0.2),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
                   side: BorderSide(
-                    color: Colors.amber.shade600.withValues(alpha: 0.5),
+                    color: Colors.amber.shade700.withValues(alpha: 0.4),
+                    width: 1.2,
                   ),
                 ),
                 child: InkWell(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
                       builder: (_) => BillView(billTitle: bill.title, billId: bill.id),
                     ),
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(14),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Header tags & Date
+                        // Timeline Pop-Up Header: Royal Assent Tag + Date
                         Row(
                           children: [
                             Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 8,
-                                vertical: 2,
+                                vertical: 3,
                               ),
                               decoration: BoxDecoration(
                                 color: Colors.amber.shade100,
-                                borderRadius: BorderRadius.circular(4),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: Colors.amber.shade600,
+                                  width: 0.8,
+                                ),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(
                                     Icons.verified,
-                                    size: 12,
+                                    size: 13,
                                     color: Colors.amber.shade900,
                                   ),
                                   const SizedBox(width: 4),
@@ -445,6 +433,7 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
                                     style: TextStyle(
                                       fontSize: 10,
                                       fontWeight: FontWeight.bold,
+                                      letterSpacing: 0.5,
                                       color: Colors.amber.shade900,
                                     ),
                                   ),
@@ -459,7 +448,7 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
                                   vertical: 2,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: hColor.withValues(alpha: 0.12),
+                                  color: hColor.withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Text(
@@ -471,50 +460,59 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 6),
                             ],
                             const Spacer(),
                             if (dateStr != null)
-                              Text(
-                                dateStr,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                  fontSize: 11,
-                                ),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.calendar_today_outlined,
+                                    size: 12,
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    dateStr,
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
                               ),
                           ],
                         ),
-                        const SizedBox(height: 8),
-                        // Title
+                        const SizedBox(height: 10),
+                        // Act Title
                         Text(
                           bill.title,
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                             fontSize: 15,
+                            height: 1.25,
                           ),
                         ),
-                        if (bill.stageDescription != null &&
-                            bill.stageDescription!.isNotEmpty) ...[
-                          const SizedBox(height: 6),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.verified_outlined,
-                                size: 14,
-                                color: Colors.amber.shade800,
+                        const SizedBox(height: 6),
+                        // Status Footer
+                        Row(
+                          children: [
+                            Text(
+                              "Enacted Law of the UK",
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: Colors.amber.shade900,
+                                fontWeight: FontWeight.w500,
+                                fontSize: 11,
                               ),
-                              const SizedBox(width: 4),
-                              Expanded(
-                                child: Text(
-                                  bill.stageDescription!,
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.onSurfaceVariant,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
+                            ),
+                            const Spacer(),
+                            Icon(
+                              Icons.arrow_forward_ios,
+                              size: 12,
+                              color: theme.colorScheme.outline,
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   ),
@@ -542,11 +540,7 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
             ),
             const SizedBox(height: 12),
             ElevatedButton(
-              onPressed: () async {
-                _hasScrolledToBottomInitially = false;
-                await vm.load();
-                _scrollToBottom();
-              },
+              onPressed: vm.load,
               child: const Text('Retry'),
             ),
           ],
