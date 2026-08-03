@@ -1038,14 +1038,14 @@ class BillsApiService {
     }
   }
 
-  /// Fetches bills for the timeline view, sorted chronologically.
-  /// Defaults to `DateUpdatedAscending` (past at top -> going down to today).
+  /// Fetches Royal Assent Acts / bills for the timeline view.
+  /// When [actsOnly] is true (default), queries items given Royal Assent (BillStage=11).
   Future<List<Map<String, dynamic>>> fetchBillsTimeline({
     int skip = 0,
     int take = 40,
-    bool ascending = true,
+    bool ascending = false,
     String? house,
-    bool actsOnly = false,
+    bool actsOnly = true,
     String? searchTerm,
   }) async {
     final queryParams = <String, String>{
@@ -1053,6 +1053,9 @@ class BillsApiService {
       'Skip': skip.toString(),
       'Take': take.toString(),
     };
+    if (actsOnly) {
+      queryParams['BillStage'] = '11';
+    }
     if (house != null && house.isNotEmpty && house != 'All') {
       queryParams['CurrentHouse'] = house;
     }
@@ -1075,7 +1078,10 @@ class BillsApiService {
           final isAct = item['isAct'] == true;
           final currentStage = item['currentStage'] as Map<String, dynamic>?;
           final stageDesc = currentStage?['description'] as String? ?? '';
-          return isAct || stageDesc.toLowerCase().contains('royal assent');
+          final abbrev = currentStage?['abbreviation'] as String? ?? '';
+          return isAct ||
+              stageDesc.toLowerCase().contains('royal assent') ||
+              abbrev == 'RA';
         }).toList();
       }
       return list;

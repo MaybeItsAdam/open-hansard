@@ -21,7 +21,7 @@ class BillTimelineItem {
     this.originatingHouse,
     this.stageDescription,
     this.lastUpdate,
-    this.isAct = false,
+    this.isAct = true,
     this.isDefeated = false,
     this.isWithdrawn = false,
   });
@@ -31,14 +31,15 @@ class BillTimelineItem {
     final lastRaw = json['lastUpdate'] as String?;
     final stageDesc = currentStage?['description'] as String?;
     final isActFlag = (json['isAct'] == true) ||
-        (stageDesc != null && stageDesc.toLowerCase().contains('royal assent'));
+        (stageDesc != null && stageDesc.toLowerCase().contains('royal assent')) ||
+        ((json['shortTitle'] as String?)?.contains('Act') ?? false);
 
     return BillTimelineItem(
       id: (json['billId'] as num?)?.toInt() ?? 0,
       title: (json['shortTitle'] as String?) ?? '',
       house: (json['currentHouse'] as String?) ?? '',
       originatingHouse: (json['originatingHouse'] as String?),
-      stageDescription: stageDesc,
+      stageDescription: stageDesc ?? 'Royal Assent',
       lastUpdate: lastRaw != null ? DateTime.tryParse(lastRaw) : null,
       isAct: isActFlag,
       isDefeated: json['isDefeated'] == true,
@@ -47,8 +48,8 @@ class BillTimelineItem {
   }
 }
 
-/// ViewModel for the Bills Timeline screen.
-/// Manages loading, pagination, sorting (past -> today vs today -> past), house/acts filtering, and search.
+/// ViewModel for the Bills & Laws Timeline screen.
+/// Loads UK Acts of Parliament chronologically (newest at bottom, scrolling UP for older Acts).
 class BillsTimelineViewModel extends ChangeNotifier {
   final ParliamentaryDataService _service;
 
@@ -58,9 +59,10 @@ class BillsTimelineViewModel extends ChangeNotifier {
   bool _disposed = false;
   String? _error;
 
-  bool _ascending = true; // Default: past at top -> going down to today
+  int _totalFetched = 0;
+  bool _ascending = false; // API order: newest first, reversed in list for bottom-start
   String _houseFilter = 'All'; // 'All', 'Commons', 'Lords'
-  bool _actsOnly = false;
+  bool _actsOnly = true; // Royal Assent only per requirement
   String _searchQuery = '';
 
   List<BillTimelineItem> _bills = [];
@@ -104,6 +106,7 @@ class BillsTimelineViewModel extends ChangeNotifier {
     _isLoading = true;
     _hasMore = true;
     _error = null;
+    _totalFetched = 0;
     _safeNotify();
 
     try {
@@ -115,7 +118,9 @@ class BillsTimelineViewModel extends ChangeNotifier {
         actsOnly: _actsOnly,
         searchTerm: _searchQuery,
       );
-      _bills = raw
+      _totalFetched = raw.length;
+
+      final parsed = raw
           .map((json) {
             try {
               return BillTimelineItem.fromJson(json);
@@ -126,9 +131,12 @@ class BillsTimelineViewModel extends ChangeNotifier {
           .whereType<BillTimelineItem>()
           .where((b) => b.id != 0 && b.title.isNotEmpty)
           .toList();
+
+      // Reverse so oldest of batch is at top, newest at bottom
+      _bills = parsed.reversed.toList();
       _hasMore = raw.length >= 40;
       if (_bills.isEmpty) {
-        _error = "No bills found matching your criteria.";
+        _error = "No Royal Assent acts found matching your criteria.";
       }
     } catch (e) {
       _error = e.toString();
@@ -138,22 +146,24 @@ class BillsTimelineViewModel extends ChangeNotifier {
     _safeNotify();
   }
 
-  Future<void> loadMore() async {
-    if (_isLoading || _isLoadingMore || !_hasMore) return;
+  /// Prepends older Acts to the top of the list when scrolling UP.
+  Future<bool> loadMore() async {
+    if (_isLoading || _isLoadingMore || !_hasMore) return false;
 
     _isLoadingMore = true;
     _safeNotify();
 
+    bool added = false;
     try {
-      final skip = _bills.length;
       final raw = await _service.fetchBillsTimeline(
-        skip: skip,
+        skip: _totalFetched,
         take: 40,
         ascending: _ascending,
         house: _houseFilter,
         actsOnly: _actsOnly,
         searchTerm: _searchQuery,
       );
+      _totalFetched += raw.length;
 
       final more = raw
           .map((json) {
@@ -167,7 +177,11 @@ class BillsTimelineViewModel extends ChangeNotifier {
           .where((b) => b.id != 0 && b.title.isNotEmpty)
           .toList();
 
-      _bills.addAll(more);
+      if (more.isNotEmpty) {
+        // Prepend older items at the top of the list
+        _bills.insertAll(0, more.reversed);
+        added = true;
+      }
       _hasMore = raw.length >= 40;
     } catch (e) {
       // Fail silently on loadMore
@@ -175,6 +189,7 @@ class BillsTimelineViewModel extends ChangeNotifier {
 
     _isLoadingMore = false;
     _safeNotify();
+    return added;
   }
 
   void _safeNotify() {

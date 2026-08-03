@@ -104,9 +104,9 @@ class ParliamentaryDataService {
   Future<List<Map<String, dynamic>>> fetchBillsTimeline({
     int skip = 0,
     int take = 40,
-    bool ascending = true,
+    bool ascending = false,
     String? house,
-    bool actsOnly = false,
+    bool actsOnly = true,
     String? searchTerm,
   }) {
     return _billsApi.fetchBillsTimeline(

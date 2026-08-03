@@ -2115,23 +2115,23 @@ void main() {
       fakeService = _FakeParliamentaryDataService();
     });
 
-    test('load parses timeline items, acts and stage descriptions correctly', () async {
+    test('load parses and reverses timeline items (oldest top, newest bottom)', () async {
       fakeService.billsTimelineResult = [
         {
           'billId': 101,
-          'shortTitle': 'Alcohol Labelling Act 2007',
-          'currentHouse': 'Lords',
-          'lastUpdate': '2007-10-10T09:11:00',
+          'shortTitle': 'Newest Act 2026',
+          'currentHouse': 'Commons',
+          'lastUpdate': '2026-05-01T10:00:00',
           'isAct': true,
           'currentStage': {'description': 'Royal Assent'},
         },
         {
           'billId': 102,
-          'shortTitle': 'Renters Reform Bill',
-          'currentHouse': 'Commons',
-          'lastUpdate': '2024-03-01T10:00:00',
-          'isAct': false,
-          'currentStage': {'description': '2nd reading'},
+          'shortTitle': 'Older Act 2024',
+          'currentHouse': 'Lords',
+          'lastUpdate': '2024-01-01T10:00:00',
+          'isAct': true,
+          'currentStage': {'description': 'Royal Assent'},
         },
       ];
 
@@ -2139,42 +2139,54 @@ void main() {
       await vm.load();
 
       expect(vm.bills, hasLength(2));
-      expect(vm.bills[0].id, 101);
-      expect(vm.bills[0].isAct, isTrue);
-      expect(vm.bills[1].id, 102);
-      expect(vm.bills[1].isAct, isFalse);
-      expect(vm.bills[1].stageDescription, '2nd reading');
-      expect(vm.ascending, isTrue);
+      // Reversed: older at index 0, newest at index 1 (bottom)
+      expect(vm.bills[0].id, 102);
+      expect(vm.bills[1].id, 101);
+      expect(vm.actsOnly, isTrue);
       expect(vm.error, isNull);
       vm.dispose();
     });
 
-    test('toggleOrder toggles ascending direction and reloads', () async {
+    test('loadMore prepends older items to top of list when scrolling UP', () async {
+      fakeService.billsTimelineResult = List.generate(
+        40,
+        (i) => {
+          'billId': 200 + i,
+          'shortTitle': 'Act 2026 #$i',
+          'currentHouse': 'Commons',
+          'isAct': true,
+        },
+      );
+
+      final vm = BillsTimelineViewModel(fakeService);
+      await vm.load();
+      expect(vm.bills, hasLength(40));
+      expect(vm.hasMore, isTrue);
+
       fakeService.billsTimelineResult = [
         {
-          'billId': 200,
-          'shortTitle': 'Test Bill',
-          'currentHouse': 'Commons',
+          'billId': 999,
+          'shortTitle': 'Older Act 2022',
+          'currentHouse': 'Lords',
+          'isAct': true,
         },
       ];
 
-      final vm = BillsTimelineViewModel(fakeService);
-      expect(vm.ascending, isTrue);
-
-      vm.toggleOrder();
-      expect(vm.ascending, isFalse);
-
-      await vm.load();
-      expect(vm.bills, hasLength(1));
+      final added = await vm.loadMore();
+      expect(added, isTrue);
+      expect(vm.bills, hasLength(41));
+      // Older item prepended at index 0
+      expect(vm.bills[0].id, 999);
       vm.dispose();
     });
 
-    test('setHouseFilter and setActsOnly update filters', () async {
+    test('setHouseFilter and setSearchQuery trigger reloads', () async {
       fakeService.billsTimelineResult = [
         {
           'billId': 300,
-          'shortTitle': 'Filtered Bill',
+          'shortTitle': 'Filtered Act',
           'currentHouse': 'Lords',
+          'isAct': true,
         },
       ];
 
@@ -2182,8 +2194,8 @@ void main() {
       vm.setHouseFilter('Lords');
       expect(vm.houseFilter, 'Lords');
 
-      vm.setActsOnly(true);
-      expect(vm.actsOnly, isTrue);
+      vm.setSearchQuery('Filtered');
+      expect(vm.searchQuery, 'Filtered');
 
       vm.dispose();
     });
