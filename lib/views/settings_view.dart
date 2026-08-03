@@ -172,6 +172,15 @@ const List<_CacheOption> _cacheOptions = [
     clear: _clearMembers,
     resultMessage: _membersResult,
   ),
+  _CacheOption(
+    icon: Icons.history_edu_outlined,
+    title: 'Clear cached bills & laws',
+    subtitle: 'Stored bill details, timeline data and lookups.',
+    confirmBody: 'Downloaded bills, acts and law details will be cleared from this device, '
+        'and re-fetched when next requested.',
+    clear: _clearBills,
+    resultMessage: _billsResult,
+  ),
 ];
 
 // Top-level tear-offs so the option list can stay `const`.
@@ -179,6 +188,7 @@ Future<int> _clearDebates(SettingsViewModel vm) => vm.clearCachedDebates();
 Future<int> _clearMaps(SettingsViewModel vm) => vm.clearMapBoundaries();
 Future<int> _clearCouncils(SettingsViewModel vm) => vm.clearCouncilData();
 Future<int> _clearMembers(SettingsViewModel vm) => vm.clearCachedMembers();
+Future<int> _clearBills(SettingsViewModel vm) => vm.clearBillsCache();
 
 String _debatesResult(int count) => count == 0
     ? 'No cached debates found.'
@@ -191,6 +201,9 @@ String _councilsResult(int count) => count == 0
 String _membersResult(int count) => count == 0
     ? 'No cached MPs found.'
     : 'Cleared $count cached MP profile${count == 1 ? '' : 's'}.';
+String _billsResult(int count) => count == 0
+    ? 'No cached bill/law downloads found.'
+    : 'Cleared cached bills & laws data.';
 
 class _SectionHeader extends StatelessWidget {
   final String title;

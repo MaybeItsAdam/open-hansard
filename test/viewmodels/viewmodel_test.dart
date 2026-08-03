@@ -286,6 +286,14 @@ class _FakeParliamentaryDataService implements ParliamentaryDataService {
   Future<Council?> fetchCouncilForYear(String name, int year) async =>
       councilByYear[year];
 
+  int clearBillsCacheCallCount = 0;
+
+  @override
+  int clearBillsCache() {
+    clearBillsCacheCallCount++;
+    return 5;
+  }
+
   @override
   void dispose() {}
 }

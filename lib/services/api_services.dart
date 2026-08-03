@@ -1204,6 +1204,16 @@ class BillsApiService {
     }
   }
 
+  /// Clears in-memory caches for bill search lookups and details. Returns count cleared.
+  int clearCache() {
+    final count = _cache.length + _billDetailCache.length;
+    _cache.clear();
+    _billDetailCache.clear();
+    _billDetailCachedAt.clear();
+    _billTypesCache = null;
+    return count;
+  }
+
   void dispose() => _client.close();
 }
 

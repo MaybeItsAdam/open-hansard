@@ -206,6 +206,12 @@ class BillsTimelineViewModel extends ChangeNotifier {
     return added;
   }
 
+  /// Clears cached bills/laws data and reloads.
+  Future<void> clearCache() async {
+    _service.clearBillsCache();
+    await load();
+  }
+
   void _safeNotify() {
     if (!_disposed) notifyListeners();
   }

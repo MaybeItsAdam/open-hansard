@@ -601,6 +601,15 @@ class ParliamentaryDataService {
   /// Clears cached MP profiles, forcing a re-fetch on next read.
   Future<int> clearCachedMembers() => _db.wipeMembersCache();
 
+  /// Clears cached bills and laws data. Returns the number of items cleared.
+  int clearBillsCache() {
+    _recentBillsCache = null;
+    _recentBillsCachedAt = null;
+    _comingUpBillsCache = null;
+    _comingUpBillsCachedAt = null;
+    return _billsApi.clearCache();
+  }
+
   void dispose() {
     _membersApi.dispose();
     _hansardApi.dispose();

@@ -91,6 +91,35 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
     });
   }
 
+  Future<void> _confirmClearDownloads(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Law Downloads?'),
+        content: const Text(
+          'Downloaded bills, acts and law details will be deleted from this device and re-fetched fresh from the API.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+    await _vm.clearCache();
+    messenger.showSnackBar(
+      const SnackBar(content: Text('Cleared cached bills & laws data.')),
+    );
+  }
+
   void _onSearchChanged(String value) {
     _debounceTimer?.cancel();
     _debounceTimer = Timer(const Duration(milliseconds: 400), () {
@@ -122,6 +151,11 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
           ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.delete_sweep_outlined),
+            tooltip: "Delete Downloaded Law Data",
+            onPressed: () => _confirmClearDownloads(context),
+          ),
           IconButton(
             icon: const Icon(Icons.zoom_out),
             tooltip: "Zoom Out Timeline Scale",

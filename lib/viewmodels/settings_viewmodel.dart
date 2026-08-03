@@ -21,4 +21,7 @@ class SettingsViewModel extends ChangeNotifier {
 
   /// Clears cached MP profiles. Returns the number of profiles removed.
   Future<int> clearCachedMembers() => _service.clearCachedMembers();
+
+  /// Clears cached bills and laws downloads. Returns the number of items cleared.
+  Future<int> clearBillsCache() async => _service.clearBillsCache();
 }
