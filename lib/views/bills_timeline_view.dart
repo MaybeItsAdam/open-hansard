@@ -10,9 +10,8 @@ import 'app_drawer.dart';
 import 'bill_view.dart';
 
 /// Timeline-first screen displaying UK Acts of Parliament (Royal Assent).
-/// Starts at the bottom of the screen with the latest 2026 Acts, allowing
-/// the user to scroll UP indefinitely into historical legislation and
-/// PINCH TO SCALE the timeline vertically.
+/// Anchored at the bottom with the latest 2026 Acts, allowing the user to scroll UP
+/// into historical legislation and PINCH TO SCALE the timeline vertically.
 class BillsTimelineView extends StatefulWidget {
   const BillsTimelineView({super.key});
 
@@ -125,18 +124,18 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
         actions: [
           IconButton(
             icon: const Icon(Icons.zoom_out),
-            tooltip: "Zoom Out Vertical Timeline",
+            tooltip: "Zoom Out Timeline Scale",
             onPressed: _zoomOut,
           ),
           IconButton(
             icon: const Icon(Icons.zoom_in),
-            tooltip: "Zoom In Vertical Timeline",
+            tooltip: "Zoom In Timeline Scale",
             onPressed: _zoomIn,
           ),
           if (_verticalScale != 1.0)
             IconButton(
               icon: const Icon(Icons.restart_alt),
-              tooltip: "Reset Timeline Scale",
+              tooltip: "Reset Scale",
               onPressed: _resetZoom,
             ),
         ],
@@ -226,7 +225,7 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                // Pinch to Scale indicator chip
+                // Scale indicator chip
                 ActionChip(
                   avatar: const Icon(Icons.unfold_more, size: 14, color: Colors.amber),
                   label: Text(
@@ -237,12 +236,13 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
                   visualDensity: VisualDensity.compact,
                 ),
                 const SizedBox(width: 8),
-                // Royal Assent Only Chip
-                FilterChip(
-                  avatar: const Icon(Icons.gavel, size: 14, color: Colors.amber),
-                  label: const Text("Royal Assent (Acts)"),
-                  selected: vm.actsOnly,
-                  onSelected: (val) => vm.setActsOnly(val),
+                // Direction Indicator Chip
+                const Chip(
+                  avatar: Icon(Icons.south, size: 14, color: Colors.amber),
+                  label: Text(
+                    "Latest (2026) at Bottom · Scroll UP for History",
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                  ),
                   visualDensity: VisualDensity.compact,
                 ),
                 const SizedBox(width: 8),
@@ -322,7 +322,8 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
             // Act Card popping up on timeline
             _buildTimelineItem(context, bill, theme),
             // Year Divider on timeline spine as we move into an older year higher up
-            if (showYearDividerAbove) _buildYearDivider(context, nextYear, theme),
+            if (showYearDividerAbove)
+              _buildYearDivider(context, nextYear, theme),
           ],
         );
       },
@@ -393,7 +394,7 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
     final hColor = _houseColor(bill.house);
     final dateStr = bill.lastUpdate != null ? _formatDate(bill.lastUpdate!) : null;
 
-    final bottomPadding = (14.0 * _verticalScale).clamp(2.0, 36.0);
+    final bottomPadding = (16.0 * _verticalScale).clamp(4.0, 40.0);
     final cardPaddingVertical = (12.0 * _verticalScale).clamp(4.0, 24.0);
     final nodeSize = (28.0 * (_verticalScale.clamp(0.8, 1.2))).clamp(20.0, 34.0);
     final isCompact = _verticalScale < 0.65;
@@ -404,7 +405,7 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
         children: [
           // ─── Vertical Timeline Spine & Date Node ─────────────────────────
           SizedBox(
-            width: 44,
+            width: 48,
             child: Stack(
               alignment: Alignment.topCenter,
               children: [
@@ -413,7 +414,7 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
                   top: 0,
                   bottom: 0,
                   child: Container(
-                    width: 3,
+                    width: 3.5,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
@@ -438,7 +439,7 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
                     boxShadow: [
                       BoxShadow(
                         color: Colors.amber.shade900.withValues(alpha: 0.3),
-                        blurRadius: 3,
+                        blurRadius: 4,
                         offset: const Offset(0, 2),
                       ),
                     ],
@@ -494,6 +495,7 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
                                   style: theme.textTheme.bodySmall?.copyWith(
                                     fontSize: 11,
                                     color: theme.colorScheme.onSurfaceVariant,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
                               ],

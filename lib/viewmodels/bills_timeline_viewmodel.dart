@@ -9,7 +9,7 @@ class BillTimelineItem {
   final String house;
   final String? originatingHouse;
   final String? stageDescription;
-  final DateTime? lastUpdate;
+  final DateTime? lastUpdate; // Exact Royal Assent date
   final bool isAct;
   final bool isDefeated;
   final bool isWithdrawn;
@@ -28,7 +28,14 @@ class BillTimelineItem {
 
   factory BillTimelineItem.fromJson(Map<String, dynamic> json) {
     final currentStage = json['currentStage'] as Map<String, dynamic>?;
-    final lastRaw = json['lastUpdate'] as String?;
+    final stageSittings = currentStage?['stageSittings'] as List?;
+    String? dateRaw;
+    if (stageSittings != null && stageSittings.isNotEmpty) {
+      final firstSitting = stageSittings.first as Map<String, dynamic>?;
+      dateRaw = firstSitting?['date'] as String?;
+    }
+    dateRaw ??= json['lastUpdate'] as String?;
+
     final stageDesc = currentStage?['description'] as String?;
     final isActFlag = (json['isAct'] == true) ||
         (stageDesc != null && stageDesc.toLowerCase().contains('royal assent')) ||
@@ -40,7 +47,7 @@ class BillTimelineItem {
       house: (json['currentHouse'] as String?) ?? '',
       originatingHouse: (json['originatingHouse'] as String?),
       stageDescription: stageDesc ?? 'Royal Assent',
-      lastUpdate: lastRaw != null ? DateTime.tryParse(lastRaw) : null,
+      lastUpdate: dateRaw != null ? DateTime.tryParse(dateRaw) : null,
       isAct: isActFlag,
       isDefeated: json['isDefeated'] == true,
       isWithdrawn: json['billWithdrawn'] != null,
@@ -49,8 +56,8 @@ class BillTimelineItem {
 }
 
 /// ViewModel for the Bills & Laws Timeline screen.
-/// Loads UK Acts of Parliament ordered newest-first from the API, designed to be rendered
-/// via a bottom-anchored timeline view where scrolling UP moves back into history.
+/// Loads UK Acts of Parliament ordered strictly by actual Royal Assent date (newest 2026 at bottom,
+/// scrolling UP into history).
 class BillsTimelineViewModel extends ChangeNotifier {
   final ParliamentaryDataService _service;
 
@@ -61,7 +68,7 @@ class BillsTimelineViewModel extends ChangeNotifier {
   String? _error;
 
   int _totalFetched = 0;
-  final bool _ascending = false; // False = DateUpdatedDescending (2026 latest first)
+  final bool _ascending = false; // False = DateUpdatedDescending
   String _houseFilter = 'All'; // 'All', 'Commons', 'Lords'
   bool _actsOnly = true; // Royal Assent only
   String _searchQuery = '';
@@ -116,7 +123,7 @@ class BillsTimelineViewModel extends ChangeNotifier {
       );
       _totalFetched = raw.length;
 
-      _bills = raw
+      final parsed = raw
           .map((json) {
             try {
               return BillTimelineItem.fromJson(json);
@@ -128,6 +135,14 @@ class BillsTimelineViewModel extends ChangeNotifier {
           .where((b) => b.id != 0 && b.title.isNotEmpty)
           .toList();
 
+      // Sort strictly by actual Royal Assent date (newest first at index 0 for reverse ListView)
+      parsed.sort((a, b) {
+        final da = a.lastUpdate ?? DateTime(1900);
+        final db = b.lastUpdate ?? DateTime(1900);
+        return db.compareTo(da);
+      });
+
+      _bills = parsed;
       _hasMore = raw.length >= 40;
       if (_bills.isEmpty) {
         _error = "No Royal Assent acts found matching your criteria.";
@@ -170,6 +185,12 @@ class BillsTimelineViewModel extends ChangeNotifier {
           .whereType<BillTimelineItem>()
           .where((b) => b.id != 0 && b.title.isNotEmpty)
           .toList();
+
+      more.sort((a, b) {
+        final da = a.lastUpdate ?? DateTime(1900);
+        final db = b.lastUpdate ?? DateTime(1900);
+        return db.compareTo(da);
+      });
 
       if (more.isNotEmpty) {
         _bills.addAll(more);
