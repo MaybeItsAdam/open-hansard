@@ -1,8 +1,8 @@
 # Privacy Policy
 
-**Last Updated:** July 6, 2026
+**Last Updated:** September 3, 2026
 
-This Privacy Policy explains how **Demopol Labs Ltd** ("we", "us", or "our"), a company registered in the United Kingdom, collects, uses, and protects your information when you use the **Open Parliament** mobile application (the "App").
+This Privacy Policy explains how **MaybeItsSoftware Ltd** ("we", "us", or "our"), a company registered in the United Kingdom, collects, uses, and protects your information when you use the **Open Parliament** mobile application (the "App").
 
 We are committed to "Privacy by Design." The App is designed as a local-first application to read UK Parliamentary debates. We do not require you to register an account or log in to use the App.
 
@@ -13,7 +13,7 @@ We are committed to "Privacy by Design." The App is designed as a local-first ap
 Except for the limited diagnostic data described in Section 3 (Sentry), we do not collect, store, or transmit any of your personal data. 
 * We do not collect your name, email address, physical address, phone number, contacts, or calendar.
 * There is no account registration or authentication.
-* We do not sync your app data to any servers owned or operated by Demopol Labs Ltd.
+* We do not sync your app data to any servers owned or operated by MaybeItsSoftware Ltd.
 
 ---
 
@@ -67,7 +67,7 @@ These third parties process your requests under their own terms and privacy poli
 
 For users in the United Kingdom (UK GDPR / Data Protection Act 2018) and the European Union (EU GDPR):
 
-* **Data Controller**: The data controller is **Demopol Labs Ltd**.
+* **Data Controller**: The data controller is **MaybeItsSoftware Ltd**.
 * **Lawful Basis for Processing**: Our processing of Sentry diagnostic data is based on our **Legitimate Interests** (Article 6(1)(f) GDPR) to maintain the security, stability, and functional integrity of our App.
 * **Your Rights**: Since the App stores all user data locally on your device, you hold direct control over your data.
   * **Access and Portability**: Your saved speeches and settings are accessible directly in the App.
@@ -102,5 +102,5 @@ We may update our Privacy Policy from time to time. We will notify you of any ch
 
 If you have any questions or suggestions about this Privacy Policy, please contact us:
 
-* **Company**: Demopol Labs Ltd
+* **Company**: MaybeItsSoftware Ltd
 * **Email**: [hi@maybeitssoftware.co.uk](mailto:hi@maybeitssoftware.co.uk)
