@@ -58,13 +58,13 @@ class _BillsListViewState extends State<BillsListView> {
           children: [
             Icon(Icons.article_outlined),
             SizedBox(width: 8),
-            Flexible(child: Text("Bills", overflow: TextOverflow.ellipsis)),
+            Flexible(child: Text("Proposed Bills", overflow: TextOverflow.ellipsis)),
           ],
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.timeline_outlined),
-            tooltip: "Bills Timeline",
+            icon: const Icon(Icons.gavel_outlined),
+            tooltip: "Laws Timeline",
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
                 builder: (_) => const BillsTimelineView(),

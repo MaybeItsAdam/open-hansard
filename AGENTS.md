@@ -100,6 +100,7 @@ lib/
 ├── viewmodels/               # ChangeNotifier — one per primary screen
 │   ├── bill_viewmodel.dart          # Single bill: detail, stages, sponsors, news
 │   ├── bills_list_viewmodel.dart    # Recently-updated / coming-up bills feed
+│   ├── bills_timeline_viewmodel.dart # Acts of Parliament / Laws timeline state
 │   ├── constituency_map_viewmodel.dart # National control map (constituencies + councils)
 │   ├── constituency_viewmodel.dart  # Latest election result for one seat
 │   ├── council_history_viewmodel.dart   # Per-year council control, paged back
@@ -113,7 +114,8 @@ lib/
 ├── views/                    # StatefulWidget screens, one per route
 │   ├── app_drawer.dart            # Shared nav drawer linking the main views
 │   ├── bill_view.dart             # Detail page for a single bill
-│   ├── bills_list_view.dart       # Main view listing recently-updated bills
+│   ├── bills_list_view.dart       # Listing for proposed / ongoing bills
+│   ├── bills_timeline_view.dart   # Laws Timeline: timeline-first view of UK Acts of Parliament
 │   ├── constituency_map_view.dart # National control map (constituencies + councils); drawer links to constituency_view / council_view / member_view
 │   ├── constituency_view.dart     # Constituency detail: sitting MP, boundary map, latest election result + vote split
 │   ├── council_view.dart          # Council detail: control, boundary map, seat breakdown, control-history graph (stacked seats-per-year columns), ward-grouped councillors (tap → councillor_view)

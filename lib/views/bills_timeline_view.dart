@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -8,6 +9,7 @@ import '../utils/house_colors.dart';
 import '../viewmodels/bills_timeline_viewmodel.dart';
 import 'app_drawer.dart';
 import 'bill_view.dart';
+import 'bills_list_view.dart';
 
 /// Timeline-first screen displaying UK Acts of Parliament (Royal Assent).
 /// Anchored at the bottom with the latest 2026 Acts, allowing the user to scroll UP
@@ -140,17 +142,26 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
       appBar: AppBar(
         title: const Row(
           children: [
-            Icon(Icons.history_edu),
+            Icon(Icons.gavel),
             SizedBox(width: 8),
             Flexible(
               child: Text(
-                "Acts of Parliament Timeline",
+                "Laws Timeline",
                 overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.article_outlined),
+            tooltip: "View Proposed Bills",
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const BillsListView(),
+              ),
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.delete_sweep_outlined),
             tooltip: "Delete Downloaded Law Data",
@@ -174,7 +185,7 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
             ),
         ],
       ),
-      drawer: const AppDrawer(current: AppDestination.billsTimeline),
+      drawer: const AppDrawer(current: AppDestination.lawsTimeline),
       body: ChangeNotifierProvider.value(
         value: _vm,
         child: Consumer<BillsTimelineViewModel>(
@@ -229,7 +240,7 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
             controller: _searchController,
             onChanged: _onSearchChanged,
             decoration: InputDecoration(
-              hintText: "Search Royal Assent Acts…",
+              hintText: "Search Enacted UK Laws (Acts of Parliament)…",
               prefixIcon: const Icon(Icons.search, size: 20),
               suffixIcon: _searchController.text.isNotEmpty
                   ? IconButton(
@@ -272,9 +283,9 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
                 const SizedBox(width: 8),
                 // Direction Indicator Chip
                 const Chip(
-                  avatar: Icon(Icons.south, size: 14, color: Colors.amber),
+                  avatar: Icon(Icons.height, size: 14, color: Colors.amber),
                   label: Text(
-                    "Latest (2026) at Bottom · Scroll UP for History",
+                    "Date-Proportional Spacing · Scroll UP into History",
                     style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
                   ),
                   visualDensity: VisualDensity.compact,
@@ -304,7 +315,7 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
   }
 
   /// Builds the timeline-first list anchored at the bottom using [reverse: true]
-  /// with dynamic vertical scaling.
+  /// with dynamic vertical scaling and date-proportional spacing.
   Widget _buildTimelineList(
     BuildContext context,
     BillsTimelineViewModel vm,
@@ -350,6 +361,11 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
             nextYear != null &&
             currentYear != nextYear;
 
+        int? daysDiff;
+        if (bill.lastUpdate != null && nextBillInHistory?.lastUpdate != null) {
+          daysDiff = bill.lastUpdate!.difference(nextBillInHistory!.lastUpdate!).inDays.abs();
+        }
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -358,14 +374,95 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
             // Year Divider on timeline spine as we move into an older year higher up
             if (showYearDividerAbove)
               _buildYearDivider(context, nextYear, theme),
+            // Proportional timeline gap based on exact days elapsed until previous law
+            if (daysDiff != null)
+              _buildSpineGap(context, daysDiff, theme)
+            else
+              SizedBox(height: (12.0 * _verticalScale).clamp(4.0, 24.0)),
           ],
         );
       },
     );
   }
 
+  double _calculateProportionalGap(int daysDiff) {
+    if (daysDiff <= 0) return (8.0 * _verticalScale).clamp(4.0, 16.0);
+    // Sub-linear scale so 1 day is ~8px, 14 days ~18px, 60 days ~35px, 180 days ~65px, 365 days ~100px (all scaled by _verticalScale)
+    final raw = 8.0 + (math.pow(daysDiff.toDouble(), 0.62) * 2.2);
+    return (raw * _verticalScale).clamp(6.0, 160.0);
+  }
+
+  Widget _buildSpineGap(BuildContext context, int daysDiff, ThemeData theme) {
+    final gapHeight = _calculateProportionalGap(daysDiff);
+    final showBadge = daysDiff >= 21 && gapHeight >= 32.0;
+
+    final months = (daysDiff / 30.44).round();
+    final gapText = months >= 2 ? "$months months gap" : "$daysDiff days gap";
+
+    return SizedBox(
+      height: gapHeight,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            width: 48,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Continuous Vertical Timeline Line across time gap
+                Positioned(
+                  top: 0,
+                  bottom: 0,
+                  child: Container(
+                    width: 3.5,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.amber.shade700,
+                          Colors.amber.shade600,
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                if (showBadge)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surface,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: Colors.amber.shade700.withValues(alpha: 0.8),
+                        width: 1,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.amber.shade900.withValues(alpha: 0.15),
+                          blurRadius: 3,
+                        ),
+                      ],
+                    ),
+                    child: Text(
+                      gapText,
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.amber.shade900,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildYearDivider(BuildContext context, int year, ThemeData theme) {
-    final verticalPadding = (16.0 * _verticalScale).clamp(6.0, 36.0);
+    final verticalPadding = (12.0 * _verticalScale).clamp(4.0, 24.0);
 
     return Padding(
       padding: EdgeInsets.symmetric(vertical: verticalPadding),
@@ -428,7 +525,7 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
     final hColor = _houseColor(bill.house);
     final dateStr = bill.lastUpdate != null ? _formatDate(bill.lastUpdate!) : null;
 
-    final bottomPadding = (16.0 * _verticalScale).clamp(4.0, 40.0);
+    final bottomPadding = (4.0 * _verticalScale).clamp(2.0, 8.0);
     final cardPaddingVertical = (12.0 * _verticalScale).clamp(4.0, 24.0);
     final nodeSize = (28.0 * (_verticalScale.clamp(0.8, 1.2))).clamp(20.0, 34.0);
     final isCompact = _verticalScale < 0.65;
