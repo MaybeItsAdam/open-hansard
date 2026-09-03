@@ -1,3 +1,10 @@
+## [0.8.1](https://github.com/MaybeItsSoftware/open-parliament/compare/v0.8.0...v0.8.1) (2026-09-03)
+
+
+### Bug Fixes
+
+* **ios:** bump minimum deployment target to 15.0 ([f5315cf](https://github.com/MaybeItsSoftware/open-parliament/commit/f5315cfdb8d3b4c462605db250aa6150f859e865))
+
 # [0.8.0](https://github.com/MaybeItsSoftware/open-parliament/compare/v0.7.2...v0.8.0) (2026-09-03)
 
 
