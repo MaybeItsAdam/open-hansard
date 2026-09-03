@@ -72,7 +72,7 @@ For users in the United Kingdom (UK GDPR / Data Protection Act 2018) and the Eur
 * **Your Rights**: Since the App stores all user data locally on your device, you hold direct control over your data.
   * **Access and Portability**: Your saved speeches and settings are accessible directly in the App.
   * **Erasure**: You can exercise your right to be forgotten by clearing the App's storage or uninstalling the App. Sentry diagnostic logs are automatically purged after 90 days.
-  * **Contact**: To exercise other rights or ask questions, email us at [hi@maybeitssoftware.co.uk](mailto:hi@maybeitssoftware.co.uk).
+  * **Contact**: To exercise other rights or ask questions, email us at [privacy@maybeitssoftware.co.uk](mailto:privacy@maybeitssoftware.co.uk).
 
 ---
 
@@ -103,4 +103,4 @@ We may update our Privacy Policy from time to time. We will notify you of any ch
 If you have any questions or suggestions about this Privacy Policy, please contact us:
 
 * **Company**: MaybeItsSoftware Ltd
-* **Email**: [hi@maybeitssoftware.co.uk](mailto:hi@maybeitssoftware.co.uk)
+* **Email**: [privacy@maybeitssoftware.co.uk](mailto:privacy@maybeitssoftware.co.uk)
