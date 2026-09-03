@@ -1,3 +1,20 @@
+# [0.8.0](https://github.com/MaybeItsSoftware/open-parliament/compare/v0.7.2...v0.8.0) (2026-09-03)
+
+
+### Bug Fixes
+
+* extract exact Royal Assent sitting date and sort timeline items by Royal Assent date ([0d05763](https://github.com/MaybeItsSoftware/open-parliament/commit/0d05763cb73b6dcf2ec101f80ecfab434e73483b))
+
+
+### Features
+
+* add Bills & Laws timeline page with chronological sorting and filtering ([6667ead](https://github.com/MaybeItsSoftware/open-parliament/commit/6667ead0d2355be54fb828c7098ac1384cdeb907))
+* add capability to delete cached bill and law downloads in Settings and Timeline view ([e2922e9](https://github.com/MaybeItsSoftware/open-parliament/commit/e2922e962f562ea0bd060beb372d6ad6a815f3e5))
+* add pinch-to-scale vertical timeline gesture and scale controls ([d6013b4](https://github.com/MaybeItsSoftware/open-parliament/commit/d6013b42c2d551d274c58ac033c40db9b00331bc))
+* re-architecture timeline view with reverse scroll physics and timeline-first popups ([4c2ad92](https://github.com/MaybeItsSoftware/open-parliament/commit/4c2ad92e75246491e46954ebac3f065742031722))
+* start timeline at bottom with latest Royal Assent Acts and scroll UP into history ([f7fab88](https://github.com/MaybeItsSoftware/open-parliament/commit/f7fab882346d082d22775a31a64761703c237610))
+* **timeline:** rename to Laws Timeline and space entries by date ([968f797](https://github.com/MaybeItsSoftware/open-parliament/commit/968f79719bd2be85db6f17cbd16954c8c715e640))
+
 ## [0.7.2](https://github.com/MaybeItsSoftware/open-parliament/compare/v0.7.1...v0.7.2) (2026-08-01)
 
 
