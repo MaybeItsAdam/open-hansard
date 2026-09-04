@@ -1,3 +1,13 @@
+# [0.9.0](https://github.com/MaybeItsSoftware/open-parliament/compare/v0.8.2...v0.9.0) (2026-09-04)
+
+
+### Features
+
+* **bills:** add full bill text reader, publications feed, and Acts of Parliament timeline ([00432c9](https://github.com/MaybeItsSoftware/open-parliament/commit/00432c9b6a823b772b1180aacaf4ddb10777eba7))
+* **standing-orders:** add verbatim Standing Orders reference view and deep-link chips ([3f27992](https://github.com/MaybeItsSoftware/open-parliament/commit/3f2799200dd6aef6c5bb3fbedf101aff648b6082))
+* **transcripts:** add text selection, structured procedural cards, and timecode fixes ([e875493](https://github.com/MaybeItsSoftware/open-parliament/commit/e87549307e9a43162043327a2b757179036e0b7a))
+* **ui:** add AnimatedPieChart, day-view debate card limits, and hemicycle enhancements ([4c7081e](https://github.com/MaybeItsSoftware/open-parliament/commit/4c7081efecccc1e979c394d4dedacdb7dfb766f2))
+
 ## [0.8.2](https://github.com/MaybeItsSoftware/open-parliament/compare/v0.8.1...v0.8.2) (2026-09-04)
 
 
