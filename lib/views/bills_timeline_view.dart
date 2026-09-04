@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -9,11 +8,8 @@ import '../utils/house_colors.dart';
 import '../viewmodels/bills_timeline_viewmodel.dart';
 import 'app_drawer.dart';
 import 'bill_view.dart';
-import 'bills_list_view.dart';
 
-/// Timeline-first screen displaying UK Acts of Parliament (Royal Assent).
-/// Anchored at the bottom with the latest 2026 Acts, allowing the user to scroll UP
-/// into historical legislation and PINCH TO SCALE the timeline vertically.
+/// Screen displaying UK Acts of Parliament (Royal Assent) on a date-proportional timeline.
 class BillsTimelineView extends StatefulWidget {
   const BillsTimelineView({super.key});
 
@@ -26,10 +22,7 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
   final _scrollController = ScrollController();
   final _searchController = TextEditingController();
   Timer? _debounceTimer;
-
-  // Vertical scale state for pinch-to-scale gesture
-  double _verticalScale = 1.0;
-  double _baseScale = 1.0;
+  bool _isSearchOpen = false;
 
   @override
   void initState() {
@@ -51,80 +44,18 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
 
   void _onScroll() {
     if (!_scrollController.hasClients) return;
-    // Trigger loadMore (fetching older past Acts up top) when scrolling UP near maxScrollExtent
+    // Load older historical Acts when scrolling near the bottom of the list
     if (_scrollController.position.pixels >=
-            _scrollController.position.maxScrollExtent - 250 &&
+            _scrollController.position.maxScrollExtent - 300 &&
         !_vm.isLoadingMore &&
         _vm.hasMore) {
       unawaited(_vm.loadMore());
     }
   }
 
-  void _onScaleStart(ScaleStartDetails details) {
-    _baseScale = _verticalScale;
-  }
-
-  void _onScaleUpdate(ScaleUpdateDetails details) {
-    // Determine scaling factor from vertical pinch or general scale
-    final factor = details.verticalScale != 1.0 ? details.verticalScale : details.scale;
-    final newScale = (_baseScale * factor).clamp(0.4, 2.5);
-    if ((newScale - _verticalScale).abs() > 0.01) {
-      setState(() {
-        _verticalScale = newScale;
-      });
-    }
-  }
-
-  void _zoomIn() {
-    setState(() {
-      _verticalScale = (_verticalScale + 0.25).clamp(0.4, 2.5);
-    });
-  }
-
-  void _zoomOut() {
-    setState(() {
-      _verticalScale = (_verticalScale - 0.25).clamp(0.4, 2.5);
-    });
-  }
-
-  void _resetZoom() {
-    setState(() {
-      _verticalScale = 1.0;
-    });
-  }
-
-  Future<void> _confirmClearDownloads(BuildContext context) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Law Downloads?'),
-        content: const Text(
-          'Downloaded bills, acts and law details will be deleted from this device and re-fetched fresh from the API.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true) return;
-    await _vm.clearCache();
-    messenger.showSnackBar(
-      const SnackBar(content: Text('Cleared cached bills & laws data.')),
-    );
-  }
-
   void _onSearchChanged(String value) {
     _debounceTimer?.cancel();
-    _debounceTimer = Timer(const Duration(milliseconds: 400), () {
+    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
       _vm.setSearchQuery(value);
     });
   }
@@ -138,51 +69,42 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
     return Scaffold(
       appBar: AppBar(
-        title: const Row(
-          children: [
-            Icon(Icons.gavel),
-            SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                "Laws Timeline",
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
+        title: _isSearchOpen
+            ? TextField(
+                controller: _searchController,
+                autofocus: true,
+                style: TextStyle(color: theme.colorScheme.onSurface),
+                decoration: InputDecoration(
+                  hintText: 'Search Acts of Parliament…',
+                  hintStyle: TextStyle(
+                    color: theme.colorScheme.onSurfaceVariant.withValues(
+                      alpha: 0.7,
+                    ),
+                  ),
+                  border: InputBorder.none,
+                ),
+                onChanged: _onSearchChanged,
+              )
+            : const Text('Acts of Parliament'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.article_outlined),
-            tooltip: "View Proposed Bills",
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => const BillsListView(),
-              ),
-            ),
+            icon: Icon(_isSearchOpen ? Icons.close : Icons.search),
+            tooltip: _isSearchOpen ? 'Close search' : 'Search Acts',
+            onPressed: () {
+              setState(() {
+                if (_isSearchOpen) {
+                  _searchController.clear();
+                  _vm.setSearchQuery('');
+                  _isSearchOpen = false;
+                } else {
+                  _isSearchOpen = true;
+                }
+              });
+            },
           ),
-          IconButton(
-            icon: const Icon(Icons.delete_sweep_outlined),
-            tooltip: "Delete Downloaded Law Data",
-            onPressed: () => _confirmClearDownloads(context),
-          ),
-          IconButton(
-            icon: const Icon(Icons.zoom_out),
-            tooltip: "Zoom Out Timeline Scale",
-            onPressed: _zoomOut,
-          ),
-          IconButton(
-            icon: const Icon(Icons.zoom_in),
-            tooltip: "Zoom In Timeline Scale",
-            onPressed: _zoomIn,
-          ),
-          if (_verticalScale != 1.0)
-            IconButton(
-              icon: const Icon(Icons.restart_alt),
-              tooltip: "Reset Scale",
-              onPressed: _resetZoom,
-            ),
         ],
       ),
       drawer: const AppDrawer(current: AppDestination.lawsTimeline),
@@ -192,20 +114,15 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
           builder: (context, vm, _) {
             return Column(
               children: [
-                _buildHeaderControls(context, vm, theme),
+                _buildFilterBar(context, vm, theme),
                 Expanded(
                   child: vm.isLoading
                       ? const Center(child: CircularProgressIndicator())
                       : vm.bills.isEmpty
                           ? _buildEmpty(context, vm)
-                          : GestureDetector(
-                              onScaleStart: _onScaleStart,
-                              onScaleUpdate: _onScaleUpdate,
-                              behavior: HitTestBehavior.translucent,
-                              child: RefreshIndicator(
-                                onRefresh: vm.load,
-                                child: _buildTimelineList(context, vm, theme),
-                              ),
+                          : RefreshIndicator(
+                              onRefresh: vm.load,
+                              child: _buildTimelineList(context, vm, theme),
                             ),
                 ),
               ],
@@ -216,97 +133,42 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
     );
   }
 
-  Widget _buildHeaderControls(
+  Widget _buildFilterBar(
     BuildContext context,
     BillsTimelineViewModel vm,
     ThemeData theme,
   ) {
-    final scalePercent = (_verticalScale * 100).round();
-
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerLow,
-        border: Border(
-          bottom: BorderSide(
-            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-          ),
-        ),
-      ),
-      child: Column(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      color: theme.colorScheme.surfaceContainerLow,
+      child: Row(
         children: [
-          // Search Field
-          TextField(
-            controller: _searchController,
-            onChanged: _onSearchChanged,
-            decoration: InputDecoration(
-              hintText: "Search Enacted UK Laws (Acts of Parliament)…",
-              prefixIcon: const Icon(Icons.search, size: 20),
-              suffixIcon: _searchController.text.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear, size: 18),
-                      onPressed: () {
-                        _searchController.clear();
-                        vm.setSearchQuery('');
-                      },
-                    )
-                  : null,
-              isDense: true,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 10,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(24),
-                borderSide: BorderSide.none,
-              ),
-              filled: true,
-              fillColor: theme.colorScheme.surface,
+          Text(
+            'Chamber:',
+            style: theme.textTheme.labelMedium?.copyWith(
+              fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 8),
-          // Filter Chips & Scale Indicator Row
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                // Scale indicator chip
-                ActionChip(
-                  avatar: const Icon(Icons.unfold_more, size: 14, color: Colors.amber),
-                  label: Text(
-                    "Pinch to Scale: $scalePercent%",
-                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                  ),
-                  onPressed: _resetZoom,
-                  visualDensity: VisualDensity.compact,
-                ),
-                const SizedBox(width: 8),
-                // Direction Indicator Chip
-                const Chip(
-                  avatar: Icon(Icons.height, size: 14, color: Colors.amber),
-                  label: Text(
-                    "Date-Proportional Spacing · Scroll UP into History",
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                  ),
-                  visualDensity: VisualDensity.compact,
-                ),
-                const SizedBox(width: 8),
-                // House Filter Chips
-                ...['All', 'Commons', 'Lords'].map((h) {
-                  final isSelected = vm.houseFilter == h;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 6),
-                    child: ChoiceChip(
-                      label: Text(h),
-                      selected: isSelected,
-                      onSelected: (sel) {
-                        if (sel) vm.setHouseFilter(h);
-                      },
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  );
-                }),
-              ],
+          const SizedBox(width: 10),
+          for (final h in ['All', 'Commons', 'Lords']) ...[
+            Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: ChoiceChip(
+                label: Text(h),
+                selected: vm.houseFilter == h,
+                onSelected: (sel) {
+                  if (sel) vm.setHouseFilter(h);
+                },
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
+          ],
+          const Spacer(),
+          Text(
+            '${vm.bills.length} Acts',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
@@ -314,8 +176,7 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
     );
   }
 
-  /// Builds the timeline-first list anchored at the bottom using [reverse: true]
-  /// with dynamic vertical scaling and date-proportional spacing.
+  /// Builds the timeline list with date-proportional vertical spacing.
   Widget _buildTimelineList(
     BuildContext context,
     BillsTimelineViewModel vm,
@@ -325,12 +186,10 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
 
     return ListView.builder(
       controller: _scrollController,
-      reverse: true, // Index 0 is at bottom (2026 Acts), higher index at top (older Acts)
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
       itemCount: totalCount,
       itemBuilder: (context, i) {
-        // Top loading indicator when scrolling UP towards maxScrollExtent
-        if (vm.hasMore && i == vm.bills.length) {
+        if (i == vm.bills.length) {
           return const Padding(
             padding: EdgeInsets.symmetric(vertical: 24),
             child: Center(
@@ -343,7 +202,7 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
                   ),
                   SizedBox(height: 8),
                   Text(
-                    "Loading older historical Acts…",
+                    'Loading older Acts of Parliament…',
                     style: TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                 ],
@@ -353,51 +212,51 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
         }
 
         final bill = vm.bills[i];
-        final nextBillInHistory = (i + 1 < vm.bills.length) ? vm.bills[i + 1] : null;
+        final nextBill = (i + 1 < vm.bills.length) ? vm.bills[i + 1] : null;
 
-        final currentYear = bill.lastUpdate?.year;
-        final nextYear = nextBillInHistory?.lastUpdate?.year;
-        final showYearDividerAbove = currentYear != null &&
-            nextYear != null &&
-            currentYear != nextYear;
+        final bDate = bill.lastUpdate;
+        final nDate = nextBill?.lastUpdate;
+        final currentYear = bDate?.year;
+        final nextYear = nDate?.year;
+        final showYearDividerBelow =
+            currentYear != null && nextYear != null && currentYear != nextYear;
 
         int? daysDiff;
-        if (bill.lastUpdate != null && nextBillInHistory?.lastUpdate != null) {
-          daysDiff = bill.lastUpdate!.difference(nextBillInHistory!.lastUpdate!).inDays.abs();
+        if (bDate != null && nDate != null) {
+          daysDiff = bDate.difference(nDate).inDays.abs();
         }
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Act Card popping up on timeline
+            // Year Divider header for the first item
+            if (i == 0 && currentYear != null)
+              _buildYearDivider(context, currentYear, theme),
+            // Act Card on timeline
             _buildTimelineItem(context, bill, theme),
-            // Year Divider on timeline spine as we move into an older year higher up
-            if (showYearDividerAbove)
-              _buildYearDivider(context, nextYear, theme),
-            // Proportional timeline gap based on exact days elapsed until previous law
+            // Date-proportional timeline gap
             if (daysDiff != null)
               _buildSpineGap(context, daysDiff, theme)
             else
-              SizedBox(height: (12.0 * _verticalScale).clamp(4.0, 24.0)),
+              const SizedBox(height: 12),
+            // Year Divider when moving into an older year
+            if (showYearDividerBelow)
+              _buildYearDivider(context, nextYear, theme),
           ],
         );
       },
     );
   }
 
+  /// Calculates proportional vertical gap height (in pixels) based on elapsed days.
   double _calculateProportionalGap(int daysDiff) {
-    if (daysDiff <= 0) return (8.0 * _verticalScale).clamp(4.0, 16.0);
-    // Sub-linear scale so 1 day is ~8px, 14 days ~18px, 60 days ~35px, 180 days ~65px, 365 days ~100px (all scaled by _verticalScale)
-    final raw = 8.0 + (math.pow(daysDiff.toDouble(), 0.62) * 2.2);
-    return (raw * _verticalScale).clamp(6.0, 160.0);
+    if (daysDiff <= 0) return 8.0;
+    final raw = 8.0 + (daysDiff * 0.2);
+    return raw.clamp(8.0, 36.0);
   }
 
   Widget _buildSpineGap(BuildContext context, int daysDiff, ThemeData theme) {
     final gapHeight = _calculateProportionalGap(daysDiff);
-    final showBadge = daysDiff >= 21 && gapHeight >= 32.0;
-
-    final months = (daysDiff / 30.44).round();
-    final gapText = months >= 2 ? "$months months gap" : "$daysDiff days gap";
 
     return SizedBox(
       height: gapHeight,
@@ -406,54 +265,20 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
         children: [
           SizedBox(
             width: 48,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                // Continuous Vertical Timeline Line across time gap
-                Positioned(
-                  top: 0,
-                  bottom: 0,
-                  child: Container(
-                    width: 3.5,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.amber.shade700,
-                          Colors.amber.shade600,
-                        ],
-                      ),
-                    ),
+            child: Center(
+              child: Container(
+                width: 3.5,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.amber.shade700,
+                      Colors.amber.shade600,
+                    ],
                   ),
                 ),
-                if (showBadge)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surface,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: Colors.amber.shade700.withValues(alpha: 0.8),
-                        width: 1,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.amber.shade900.withValues(alpha: 0.15),
-                          blurRadius: 3,
-                        ),
-                      ],
-                    ),
-                    child: Text(
-                      gapText,
-                      style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.amber.shade900,
-                      ),
-                    ),
-                  ),
-              ],
+              ),
             ),
           ),
         ],
@@ -462,10 +287,8 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
   }
 
   Widget _buildYearDivider(BuildContext context, int year, ThemeData theme) {
-    final verticalPadding = (12.0 * _verticalScale).clamp(4.0, 24.0);
-
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: verticalPadding),
+      padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
         children: [
           Container(
@@ -487,7 +310,7 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
                 const Icon(Icons.history, size: 16, color: Colors.white),
                 const SizedBox(width: 6),
                 Text(
-                  "$year",
+                  '$year',
                   style: theme.textTheme.titleMedium?.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -515,32 +338,25 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
     );
   }
 
-  /// Builds a single timeline node & bill pop-up card along the timeline spine,
-  /// vertically scaled according to [_verticalScale].
   Widget _buildTimelineItem(
     BuildContext context,
     BillTimelineItem bill,
     ThemeData theme,
   ) {
     final hColor = _houseColor(bill.house);
-    final dateStr = bill.lastUpdate != null ? _formatDate(bill.lastUpdate!) : null;
-
-    final bottomPadding = (4.0 * _verticalScale).clamp(2.0, 8.0);
-    final cardPaddingVertical = (12.0 * _verticalScale).clamp(4.0, 24.0);
-    final nodeSize = (28.0 * (_verticalScale.clamp(0.8, 1.2))).clamp(20.0, 34.0);
-    final isCompact = _verticalScale < 0.65;
+    final dateStr =
+        bill.lastUpdate != null ? _formatDate(bill.lastUpdate!) : null;
 
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // ─── Vertical Timeline Spine & Date Node ─────────────────────────
+          // Timeline Spine Node
           SizedBox(
             width: 48,
             child: Stack(
               alignment: Alignment.topCenter,
               children: [
-                // Continuous Vertical Timeline Line
                 Positioned(
                   top: 0,
                   bottom: 0,
@@ -558,11 +374,10 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
                     ),
                   ),
                 ),
-                // Timeline Date Node Icon
                 Container(
-                  margin: EdgeInsets.only(top: isCompact ? 6 : 14),
-                  width: nodeSize,
-                  height: nodeSize,
+                  margin: const EdgeInsets.only(top: 14),
+                  width: 26,
+                  height: 26,
                   decoration: BoxDecoration(
                     color: Colors.amber.shade800,
                     shape: BoxShape.circle,
@@ -575,178 +390,145 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
                       ),
                     ],
                   ),
-                  child: Icon(Icons.gavel, size: nodeSize * 0.5, color: Colors.white),
+                  child: const Icon(Icons.gavel, size: 13, color: Colors.white),
                 ),
               ],
             ),
           ),
           const SizedBox(width: 8),
-          // ─── Bill Pop-Up Card Branching off Timeline ──────────────────────
+          // Act Card
           Expanded(
-            child: Padding(
-              padding: EdgeInsets.only(bottom: bottomPadding),
-              child: Card(
-                elevation: 2,
-                shadowColor: Colors.amber.shade900.withValues(alpha: 0.2),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  side: BorderSide(
-                    color: Colors.amber.shade700.withValues(alpha: 0.4),
-                    width: 1.2,
+            child: Card(
+              elevation: 1.5,
+              shadowColor: Colors.amber.shade900.withValues(alpha: 0.15),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+                side: BorderSide(
+                  color: Colors.amber.shade700.withValues(alpha: 0.3),
+                  width: 1.0,
+                ),
+              ),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(14),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) =>
+                        BillView(billTitle: bill.title, billId: bill.id),
                   ),
                 ),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(14),
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => BillView(billTitle: bill.title, billId: bill.id),
-                    ),
-                  ),
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: cardPaddingVertical,
-                    ),
-                    child: isCompact
-                        ? Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  bill.title,
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.shade100,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: Colors.amber.shade600,
+                                width: 0.8,
                               ),
-                              if (dateStr != null) ...[
-                                const SizedBox(width: 8),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.verified,
+                                  size: 13,
+                                  color: Colors.amber.shade900,
+                                ),
+                                const SizedBox(width: 4),
                                 Text(
-                                  dateStr,
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    fontSize: 11,
-                                    color: theme.colorScheme.onSurfaceVariant,
-                                    fontWeight: FontWeight.w600,
+                                  'ROYAL ASSENT',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                    color: Colors.amber.shade900,
                                   ),
                                 ),
                               ],
-                            ],
-                          )
-                        : Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Timeline Pop-Up Header: Royal Assent Tag + Date
-                              Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 3,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.amber.shade100,
-                                      borderRadius: BorderRadius.circular(6),
-                                      border: Border.all(
-                                        color: Colors.amber.shade600,
-                                        width: 0.8,
-                                      ),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          Icons.verified,
-                                          size: 13,
-                                          color: Colors.amber.shade900,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          "ROYAL ASSENT",
-                                          style: TextStyle(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.bold,
-                                            letterSpacing: 0.5,
-                                            color: Colors.amber.shade900,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  if (bill.house.isNotEmpty) ...[
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 6,
-                                        vertical: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: hColor.withValues(alpha: 0.15),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text(
-                                        bill.house.toUpperCase(),
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
-                                          color: hColor,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                  const Spacer(),
-                                  if (dateStr != null)
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.calendar_today_outlined,
-                                          size: 12,
-                                          color: theme.colorScheme.onSurfaceVariant,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          dateStr,
-                                          style: theme.textTheme.bodySmall?.copyWith(
-                                            color: theme.colorScheme.onSurfaceVariant,
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 11,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                ],
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          if (bill.house.isNotEmpty) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
                               ),
-                              const SizedBox(height: 10),
-                              // Act Title
-                              Text(
-                                bill.title,
-                                style: theme.textTheme.titleMedium?.copyWith(
+                              decoration: BoxDecoration(
+                                color: hColor.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                bill.house.toUpperCase(),
+                                style: TextStyle(
+                                  fontSize: 10,
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 15,
-                                  height: 1.25,
+                                  color: hColor,
                                 ),
                               ),
-                              const SizedBox(height: 6),
-                              // Status Footer
-                              Row(
-                                children: [
-                                  Text(
-                                    "Enacted Law of the UK",
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: Colors.amber.shade900,
-                                      fontWeight: FontWeight.w500,
-                                      fontSize: 11,
-                                    ),
+                            ),
+                          ],
+                          const Spacer(),
+                          if (dateStr != null)
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.calendar_today_outlined,
+                                  size: 12,
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  dateStr,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 11,
                                   ),
-                                  const Spacer(),
-                                  Icon(
-                                    Icons.arrow_forward_ios,
-                                    size: 12,
-                                    color: theme.colorScheme.outline,
-                                  ),
-                                ],
-                              ),
-                            ],
+                                ),
+                              ],
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        bill.title,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                          height: 1.25,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Text(
+                            'Act of Parliament',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: Colors.amber.shade900,
+                              fontWeight: FontWeight.w500,
+                              fontSize: 11,
+                            ),
                           ),
+                          const Spacer(),
+                          Icon(
+                            Icons.arrow_forward_ios,
+                            size: 12,
+                            color: theme.colorScheme.outline,
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -767,7 +549,7 @@ class _BillsTimelineViewState extends State<BillsTimelineView> {
             const Icon(Icons.history_edu, size: 48),
             const SizedBox(height: 12),
             Text(
-              vm.error ?? 'No Royal Assent acts found.',
+              vm.error ?? 'No Acts of Parliament found.',
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 12),

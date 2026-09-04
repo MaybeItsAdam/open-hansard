@@ -64,7 +64,7 @@ class _BillsListViewState extends State<BillsListView> {
         actions: [
           IconButton(
             icon: const Icon(Icons.gavel_outlined),
-            tooltip: "Laws Timeline",
+            tooltip: "Acts of Parliament",
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
                 builder: (_) => const BillsTimelineView(),

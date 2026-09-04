@@ -2,6 +2,165 @@ import 'package:flutter/foundation.dart';
 
 import '../services/parliamentary_data_service.dart';
 
+/// Type classification for a bill publication.
+class BillPublicationType {
+  final int id;
+  final String name;
+  final String description;
+
+  const BillPublicationType({
+    required this.id,
+    required this.name,
+    required this.description,
+  });
+
+  factory BillPublicationType.fromJson(Map<String, dynamic> json) {
+    return BillPublicationType(
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      name: (json['name'] as String?) ?? '',
+      description: (json['description'] as String?) ?? '',
+    );
+  }
+}
+
+/// Web or external link associated with a bill publication.
+class BillPublicationLink {
+  final int id;
+  final String title;
+  final String url;
+  final String contentType;
+
+  const BillPublicationLink({
+    required this.id,
+    required this.title,
+    required this.url,
+    required this.contentType,
+  });
+
+  factory BillPublicationLink.fromJson(Map<String, dynamic> json) {
+    return BillPublicationLink(
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      title: (json['title'] as String?) ?? '',
+      url: (json['url'] as String?) ?? '',
+      contentType: (json['contentType'] as String?) ?? '',
+    );
+  }
+
+  bool get isHtml =>
+      contentType.contains('html') ||
+      url.endsWith('.html') ||
+      url.endsWith('.htm');
+  bool get isPdf => contentType.contains('pdf') || url.endsWith('.pdf');
+}
+
+/// File document associated with a bill publication.
+class BillPublicationFile {
+  final int id;
+  final String filename;
+  final String contentType;
+  final int contentLength;
+
+  const BillPublicationFile({
+    required this.id,
+    required this.filename,
+    required this.contentType,
+    required this.contentLength,
+  });
+
+  factory BillPublicationFile.fromJson(Map<String, dynamic> json) {
+    return BillPublicationFile(
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      filename: (json['filename'] as String?) ?? '',
+      contentType: (json['contentType'] as String?) ?? '',
+      contentLength: (json['contentLength'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  String getDownloadUrl(int publicationId) {
+    return 'https://bills-api.parliament.uk/api/v1/Publications/$publicationId/Documents/$id/Download';
+  }
+
+  bool get isHtml =>
+      contentType.contains('html') ||
+      filename.toLowerCase().endsWith('.html') ||
+      filename.toLowerCase().endsWith('.htm');
+  bool get isPdf =>
+      contentType.contains('pdf') || filename.toLowerCase().endsWith('.pdf');
+}
+
+/// A publication item published during a bill's lifecycle (Bill text, Explanatory Notes,
+/// Amendment Papers, Research Briefings, Act text).
+class BillPublication {
+  final int id;
+  final String house;
+  final String title;
+  final DateTime? displayDate;
+  final BillPublicationType? publicationType;
+  final List<BillPublicationLink> links;
+  final List<BillPublicationFile> files;
+
+  const BillPublication({
+    required this.id,
+    required this.house,
+    required this.title,
+    required this.links,
+    required this.files,
+    this.displayDate,
+    this.publicationType,
+  });
+
+  factory BillPublication.fromJson(Map<String, dynamic> json) {
+    final rawType = json['publicationType'] as Map<String, dynamic>?;
+    final rawLinks = (json['links'] as List<dynamic>?) ?? const [];
+    final rawFiles = (json['files'] as List<dynamic>?) ?? const [];
+
+    return BillPublication(
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      house: (json['house'] as String?) ?? '',
+      title: (json['title'] as String?) ?? '',
+      displayDate: DateTime.tryParse((json['displayDate'] as String?) ?? ''),
+      publicationType:
+          rawType != null ? BillPublicationType.fromJson(rawType) : null,
+      links: rawLinks
+          .whereType<Map<String, dynamic>>()
+          .map(BillPublicationLink.fromJson)
+          .toList(),
+      files: rawFiles
+          .whereType<Map<String, dynamic>>()
+          .map(BillPublicationFile.fromJson)
+          .toList(),
+    );
+  }
+
+  BillPublicationFile? get htmlFile {
+    for (final f in files) {
+      if (f.isHtml) return f;
+    }
+    return null;
+  }
+
+  BillPublicationFile? get pdfFile {
+    for (final f in files) {
+      if (f.isPdf) return f;
+    }
+    return null;
+  }
+
+  BillPublicationLink? get htmlLink {
+    for (final l in links) {
+      if (l.isHtml) return l;
+    }
+    return null;
+  }
+
+  BillPublicationLink? get pdfLink {
+    for (final l in links) {
+      if (l.isPdf) return l;
+    }
+    return null;
+  }
+}
+
 /// A member (or organisation) sponsoring a bill.
 class BillSponsor {
   final int? memberId;
@@ -221,6 +380,7 @@ class BillViewModel extends ChangeNotifier {
   BillType? _billType;
   List<BillStage> _stages = const [];
   List<BillNews> _news = const [];
+  List<BillPublication> _publications = const [];
 
   /// When [billId] is supplied (e.g. opened from the recent-bills list) the
   /// title→id lookup is skipped.
@@ -238,6 +398,24 @@ class BillViewModel extends ChangeNotifier {
 
   /// News updates, most recent first.
   List<BillNews> get news => _news;
+
+  /// Official publications (bill texts, explanatory notes, amendments, briefings), most recent first.
+  List<BillPublication> get publications => _publications;
+
+  /// Returns the primary publication containing the text of the Bill or Act.
+  BillPublication? get primaryBillPublication {
+    if (_publications.isEmpty) return null;
+    for (final p in _publications) {
+      final name = p.publicationType?.name.toLowerCase() ?? '';
+      if (name == 'bill' || name == 'act' || name.contains('bill') || name.contains('act')) {
+        return p;
+      }
+    }
+    for (final p in _publications) {
+      if (p.files.isNotEmpty || p.links.isNotEmpty) return p;
+    }
+    return _publications.first;
+  }
 
   /// The public bills.parliament.uk page, available once the id is resolved.
   Uri? get billPageUrl =>
@@ -261,11 +439,13 @@ class BillViewModel extends ChangeNotifier {
       final detailFuture = _service.fetchBillDetail(id);
       final stagesFuture = _service.fetchBillStages(id);
       final newsFuture = _service.fetchBillNews(id);
+      final publicationsFuture = _service.fetchBillPublications(id);
       final typesFuture = _service.fetchBillTypes();
 
       final detail = await detailFuture;
       final rawStages = await stagesFuture;
       final rawNews = await newsFuture;
+      final rawPublications = await publicationsFuture;
       final rawTypes = await typesFuture;
 
       if (detail != null) _bill = Bill.fromJson(detail);
@@ -299,7 +479,19 @@ class BillViewModel extends ChangeNotifier {
           .where((n) => n.title.isNotEmpty || n.content.isNotEmpty)
           .toList();
 
-      if (_bill == null && _stages.isEmpty && _news.isEmpty) {
+      _publications = rawPublications
+          .map((json) {
+            try {
+              return BillPublication.fromJson(json);
+            } catch (_) {
+              return null;
+            }
+          })
+          .whereType<BillPublication>()
+          .where((p) => p.title.isNotEmpty)
+          .toList();
+
+      if (_bill == null && _stages.isEmpty && _news.isEmpty && _publications.isEmpty) {
         _error = 'Could not load bill details.';
       }
     } catch (e) {
