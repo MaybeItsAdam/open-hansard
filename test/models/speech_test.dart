@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:open_hansard/models/speech.dart';
+import 'package:open_parliament/models/speech.dart';
 
 void main() {
   group('Speech', () {

@@ -21,7 +21,10 @@ int? parseTimecodeToSeconds(String raw) {
   final trimmed = raw.trim();
   final isoParsed = DateTime.tryParse(trimmed);
   if (isoParsed != null && trimmed.contains('T')) {
-    return (isoParsed.hour * 3600) + (isoParsed.minute * 60) + isoParsed.second;
+    final seconds =
+        (isoParsed.hour * 3600) + (isoParsed.minute * 60) + isoParsed.second;
+    if (seconds == 0) return null;
+    return seconds;
   }
 
   final parts = trimmed.split(':');
@@ -31,7 +34,9 @@ int? parseTimecodeToSeconds(String raw) {
   final s = parts.length == 3 ? int.tryParse(parts[2]) : 0;
   if (h == null || m == null || s == null) return null;
   if (h < 0 || h > 23 || m < 0 || m > 59 || s < 0 || s > 59) return null;
-  return (h * 3600) + (m * 60) + s;
+  final seconds = (h * 3600) + (m * 60) + s;
+  if (seconds == 0) return null;
+  return seconds;
 }
 
 /// Formats [secondsSinceMidnight] as `HH:MM:SS`, wrapping at 24h.

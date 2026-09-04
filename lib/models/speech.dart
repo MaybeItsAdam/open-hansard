@@ -139,18 +139,39 @@ class Speech {
   /// True when this is a Prayers debate entry (title is "Prayers").
   bool get isPrayers => debateTitle.trim().toLowerCase() == 'prayers';
 
-  /// True when the text marks a procedural event (verbal vote outcome,
-  /// question put, etc.) without being a named speech.
+  /// True when the text marks a procedural event or decision outcome (verbal vote outcome,
+  /// question put, bill stage result, amendment disposition, etc.) without being a spoken speech.
   bool get isEventTag {
     if (hasNamedSpeaker && !isCollectiveSpeaker) return false;
     final t = speechText.trim();
-    return t.startsWith('Question put') ||
+    if (t.isEmpty) return false;
+
+    if (hrsTag.toLowerCase() == 'hs_procedure') return true;
+
+    if (t.startsWith('Question put') ||
         t.startsWith('Question agreed') ||
+        t.startsWith('Question negatived') ||
         t.startsWith('Motion made') ||
-        t.endsWith('agreed to.') ||
+        t.startsWith('Bill read') ||
+        t.startsWith('Bill committed') ||
+        t.startsWith('Bill reported') ||
+        t.startsWith('Ordered,') ||
+        t.startsWith('Resolved,')) {
+      return true;
+    }
+
+    if (t.endsWith('agreed to.') ||
         t.endsWith('negatived.') ||
         t.endsWith('disagreed to.') ||
-        (t.startsWith('The ') && t.endsWith('was asked—'));
+        t.endsWith('withdrawn.') ||
+        t.endsWith('read a Second time.') ||
+        t.endsWith('read the Third time.') ||
+        t.endsWith('added to the Bill.') ||
+        t.endsWith('stand part of the Bill.')) {
+      return true;
+    }
+
+    return (t.startsWith('The ') && t.endsWith('was asked—'));
   }
 
   /// Extracts the name from a "[Name in the Chair]" procedural line, or null.

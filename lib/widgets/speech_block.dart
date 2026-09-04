@@ -5,10 +5,12 @@ import '../models/speech.dart';
 import '../utils/committee_roster.dart';
 import '../utils/party_colors.dart' as party_util;
 import '../utils/speaker_identity.dart';
+import '../utils/standing_order_helpers.dart';
 import 'speech_block/committee_roster_card.dart';
 import 'speech_block/division_result_card.dart';
 import 'speech_block/highlighted_text.dart';
 import 'speech_block/in_chair_banner.dart';
+import 'speech_block/procedural_card.dart';
 import 'speech_block/speaker_contribution_card.dart';
 
 /// A transcript block that adapts style to Hansard item structure:
@@ -48,20 +50,17 @@ class SpeechBlock extends StatelessWidget {
     if (speech.isPrayers) {
       return _buildPrayersBanner(theme);
     }
-    if (speech.isEventTag) {
-      return _buildEventTag(theme);
+    if (speech.isEventTag || speech.isProcedureOutcome) {
+      return _buildProcedureOutcome(context, theme);
+    }
+    if (speech.isAction) {
+      return _buildActionRow(theme);
     }
     if (speech.isCollectiveSpeaker) {
       return _buildCollectiveSpeaker(theme);
     }
     if (speech.isProceduralText) {
-      return _buildProceduralRow(theme);
-    }
-    if (speech.isProcedureOutcome) {
-      return _buildProcedureOutcome(theme);
-    }
-    if (speech.isAction) {
-      return _buildActionRow(theme);
+      return _buildProceduralRow(context, theme);
     }
     return SpeakerContributionCard(
       speech: speech,
@@ -72,7 +71,7 @@ class SpeechBlock extends StatelessWidget {
     );
   }
 
-  Widget _buildProceduralRow(ThemeData theme) {
+  Widget _buildProceduralRow(BuildContext context, ThemeData theme) {
     final chairName = speech.inChairName;
     if (chairName != null) {
       return InChairBanner(
@@ -112,18 +111,11 @@ class SpeechBlock extends StatelessWidget {
       );
     }
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-      child: HighlightedText(
-        speech.speechText,
-        query: searchQuery,
-        style: theme.textTheme.bodyLarge?.copyWith(
-          fontStyle: FontStyle.italic,
-          color: theme.colorScheme.onSurfaceVariant,
-          height: 1.45,
-        ),
-        textAlign: TextAlign.justify,
-      ),
+    return ProceduralCard(
+      speech: speech,
+      searchQuery: searchQuery,
+      member: member,
+      onMemberTap: onMemberTap,
     );
   }
 
@@ -152,20 +144,7 @@ class SpeechBlock extends StatelessWidget {
     );
   }
 
-  /// Inline tag for procedural events like "Question put and agreed to".
-  Widget _buildEventTag(ThemeData theme) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
-      child: HighlightedText(
-        speech.speechText.trim(),
-        query: searchQuery,
-        style: theme.textTheme.bodySmall?.copyWith(
-          fontStyle: FontStyle.italic,
-          color: theme.colorScheme.onSurfaceVariant,
-        ),
-      ),
-    );
-  }
+
 
   /// Compact row for collective/anonymous entities like "Hon. Members",
   /// "Several hon. Members rose—", "An hon. Member".
@@ -308,27 +287,77 @@ class SpeechBlock extends StatelessWidget {
   }
 
   /// Outcome line for procedure results like "Motion agreed.", "Bill passed.".
-  Widget _buildProcedureOutcome(ThemeData theme) {
+  Widget _buildProcedureOutcome(BuildContext context, ThemeData theme) {
+    final text = speech.speechText.trim();
+    final lower = text.toLowerCase();
+    final standingOrders =
+        StandingOrderHelpers.detectStandingOrders(text);
+
+    final isNegatived =
+        lower.contains('negatived') || lower.contains('disagreed');
+    final isOrder =
+        lower.startsWith('ordered,') || lower.startsWith('resolved,');
+
+    final icon = isNegatived
+        ? Icons.cancel_outlined
+        : (isOrder ? Icons.gavel_outlined : Icons.check_circle_outline);
+    final color = isNegatived
+        ? theme.colorScheme.error
+        : theme.colorScheme.primary;
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
-      child: Row(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 5),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            Icons.check_circle_outline,
-            size: 14,
-            color: theme.colorScheme.primary,
-          ),
-          const SizedBox(width: 6),
-          Expanded(
-            child: HighlightedText(
-              speech.speechText.trim(),
-              query: searchQuery,
-              style: theme.textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: theme.colorScheme.primary,
+          Row(
+            children: [
+              Icon(
+                icon,
+                size: 14,
+                color: color,
               ),
-            ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: HighlightedText(
+                  text,
+                  query: searchQuery,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: color,
+                  ),
+                ),
+              ),
+            ],
           ),
+          if (standingOrders.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: [
+                for (final order in standingOrders)
+                  ActionChip(
+                    avatar: const Icon(Icons.gavel_outlined, size: 14),
+                    label: Text(
+                      order.shortCode,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    tooltip: order.title,
+                    onPressed: () =>
+                        StandingOrderHelpers.showStandingOrderSheet(
+                      context,
+                      order,
+                    ),
+                    visualDensity: VisualDensity.compact,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+              ],
+            ),
+          ],
         ],
       ),
     );

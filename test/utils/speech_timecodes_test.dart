@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:open_hansard/utils/speech_timecodes.dart';
+import 'package:open_parliament/utils/speech_timecodes.dart';
 
 void main() {
   group('parseTimecodeToSeconds', () {

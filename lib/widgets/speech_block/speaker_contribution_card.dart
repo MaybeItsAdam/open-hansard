@@ -4,6 +4,7 @@ import '../../models/member.dart';
 import '../../models/speech.dart';
 import '../../utils/party_colors.dart' as party_util;
 import '../../utils/speaker_identity.dart';
+import '../../utils/standing_order_helpers.dart';
 import '../person_avatar.dart';
 import 'highlighted_text.dart';
 
@@ -33,6 +34,8 @@ class SpeakerContributionCard extends StatelessWidget {
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
     final speaker = speakerIdentityFor(speech, member);
+    final standingOrders =
+        StandingOrderHelpers.detectStandingOrders(speech.speechText);
     // Prefer the party Hansard actually printed that day over the member's
     // current cached party, so debates stay accurate for MPs who have since
     // defected, lost the whip, or otherwise changed party.
@@ -90,6 +93,36 @@ class SpeakerContributionCard extends StatelessWidget {
                           : textTheme.bodyMedium,
                       textAlign: TextAlign.justify,
                     ),
+                    if (standingOrders.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: [
+                          for (final order in standingOrders)
+                            ActionChip(
+                              avatar:
+                                  const Icon(Icons.gavel_outlined, size: 14),
+                              label: Text(
+                                order.shortCode,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              tooltip: order.title,
+                              onPressed: () =>
+                                  StandingOrderHelpers.showStandingOrderSheet(
+                                context,
+                                order,
+                              ),
+                              visualDensity: VisualDensity.compact,
+                              materialTapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
+                            ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),

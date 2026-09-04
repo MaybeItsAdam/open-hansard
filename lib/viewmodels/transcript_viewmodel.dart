@@ -4,6 +4,7 @@ import '../models/debate.dart';
 import '../models/member.dart';
 import '../models/speech.dart';
 import '../services/parliamentary_data_service.dart';
+import '../utils/bill_helpers.dart';
 import '../utils/member_lookup_index.dart';
 import '../utils/parliament_live.dart' as live_url;
 import '../utils/party_tokens.dart';
@@ -63,6 +64,8 @@ class TranscriptViewModel extends ChangeNotifier {
   List<TimeAnchor> _timeAnchors = const [];
   int? _sittingStartSeconds;
   String? _primaryDebateTitle;
+  String? _relatedBillTitle;
+  int? _relatedBillId;
 
   /// "Commons", "Lords", "Commons & Lords", or null if unknown.
   String? _primaryHouse;
@@ -75,6 +78,9 @@ class TranscriptViewModel extends ChangeNotifier {
   Map<int, Member> get memberCache => Map.unmodifiable(_memberCache);
   List<SpeakerEntry> get speakers => List.unmodifiable(_speakers);
   String? get primaryDebateTitle => _primaryDebateTitle;
+  String? get relatedBillTitle => _relatedBillTitle;
+  int? get relatedBillId => _relatedBillId;
+  bool get hasRelatedBill => _relatedBillTitle != null;
   String? get primaryHouse => _primaryHouse;
   String? get primarySection => _primarySection;
   String? get sittingStartTimeLabel => _sittingStartSeconds != null
@@ -108,6 +114,14 @@ class TranscriptViewModel extends ChangeNotifier {
       _primaryDebateTitle = _computePrimaryDebateTitle(_speeches);
       _primaryHouse = _computePrimaryHouseFromDebates(debates);
       _primarySection = _computePrimarySectionFromDebates(debates);
+      _relatedBillTitle = detectBillTitle(_primaryDebateTitle ?? '');
+      if (_relatedBillTitle != null) {
+        try {
+          _relatedBillId = await _service.findBillId(_relatedBillTitle!);
+        } catch (_) {
+          _relatedBillId = null;
+        }
+      }
       await _loadMemberProfiles();
       _buildSpeakersIndex();
     } catch (e) {

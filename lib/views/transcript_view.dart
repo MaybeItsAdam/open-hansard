@@ -19,6 +19,7 @@ import '../utils/webview_background.dart';
 import '../viewmodels/transcript_viewmodel.dart';
 import '../widgets/speech_actions_sheet.dart';
 import '../widgets/speech_block.dart';
+import 'bill_view.dart';
 import 'member_view.dart';
 
 /// Displays the verbatim transcript for a single Parliamentary sitting day.
@@ -87,6 +88,11 @@ class _TranscriptViewState extends State<TranscriptView>
   bool _isPlayerOpen = false;
   bool _playerEverOpened = false;
 
+  /// Swipable secondary view (Transcript <-> Bill Details) when a related bill is
+  /// present for the current debate.
+  late final PageController _pageController;
+  int _selectedPageIndex = 0;
+
   /// True once the list is scrolled away from the very top. Drives the AppBar
   /// collapsing to a single compact line so the pinned video tray has room.
   bool _scrolled = false;
@@ -120,6 +126,7 @@ class _TranscriptViewState extends State<TranscriptView>
       vsync: this,
       duration: const Duration(milliseconds: 250),
     );
+    _pageController = PageController();
     unawaited(_vm.loadSpeeches());
   }
 
@@ -128,6 +135,7 @@ class _TranscriptViewState extends State<TranscriptView>
     _positionsListener.itemPositions.removeListener(_onPositionsChanged);
     _trayController.dispose();
     _minimapController.dispose();
+    _pageController.dispose();
     _searchDebounce?.cancel();
     _searchController.dispose();
     _searchFocusNode.dispose();
@@ -196,6 +204,10 @@ class _TranscriptViewState extends State<TranscriptView>
   // ─── Find-in-transcript search ─────────────────────────────────────────────
 
   void _openSearch() {
+    if (_selectedPageIndex != 0 && _pageController.hasClients) {
+      setState(() => _selectedPageIndex = 0);
+      _pageController.jumpToPage(0);
+    }
     setState(() => _isSearchOpen = true);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _searchFocusNode.requestFocus();
@@ -341,6 +353,74 @@ class _TranscriptViewState extends State<TranscriptView>
                         ? const IconThemeData(color: appBarForeground)
                         : null,
                 toolbarHeight: _scrolled ? 48 : kToolbarHeight,
+                bottom:
+                    vm.hasRelatedBill
+                        ? PreferredSize(
+                          preferredSize: const Size.fromHeight(42),
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
+                            child: SizedBox(
+                              width: double.infinity,
+                              child: SegmentedButton<int>(
+                                segments: [
+                                  const ButtonSegment<int>(
+                                    value: 0,
+                                    label: Text('Transcript'),
+                                    icon: Icon(
+                                      Icons.article_outlined,
+                                      size: 16,
+                                    ),
+                                  ),
+                                  ButtonSegment<int>(
+                                    value: 1,
+                                    label: Text(
+                                      'Bill: ${vm.relatedBillTitle}',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    icon: const Icon(
+                                      Icons.description_outlined,
+                                      size: 16,
+                                    ),
+                                  ),
+                                ],
+                                selected: {_selectedPageIndex},
+                                onSelectionChanged: (selection) {
+                                  final index = selection.first;
+                                  setState(() => _selectedPageIndex = index);
+                                  if (_pageController.hasClients) {
+                                    _pageController.animateToPage(
+                                      index,
+                                      duration: const Duration(
+                                        milliseconds: 300,
+                                      ),
+                                      curve: Curves.easeInOut,
+                                    );
+                                  }
+                                },
+                                showSelectedIcon: false,
+                                style: SegmentedButton.styleFrom(
+                                  visualDensity: VisualDensity.compact,
+                                  selectedBackgroundColor:
+                                      appBarColor != null
+                                          ? appBarForeground.withValues(
+                                            alpha: 0.25,
+                                          )
+                                          : Theme.of(
+                                            context,
+                                          ).colorScheme.primaryContainer,
+                                  selectedForegroundColor:
+                                      appBarColor != null
+                                          ? appBarForeground
+                                          : Theme.of(
+                                            context,
+                                          ).colorScheme.onPrimaryContainer,
+                                ),
+                              ),
+                            ),
+                          ),
+                        )
+                        : null,
                 leading:
                     _isSearchOpen
                         ? IconButton(
@@ -502,27 +582,56 @@ class _TranscriptViewState extends State<TranscriptView>
                   if (vm.error != null) return _buildErrorView(vm.error!);
                   if (vm.speeches.isEmpty) return _buildEmptyView();
                   final contentWidth = maxWidth + _minimapWidth;
+
+                  final transcriptContent = Align(
+                    alignment: Alignment.topCenter,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: contentWidth),
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(
+                              child: SelectionArea(
+                                child: _buildTranscriptList(vm),
+                              ),
+                            ),
+                            _buildMinimap(vm),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+
+                  final mainContent = !vm.hasRelatedBill
+                      ? transcriptContent
+                      : PageView(
+                          controller: _pageController,
+                          onPageChanged: (index) {
+                            if (_selectedPageIndex != index) {
+                              setState(() => _selectedPageIndex = index);
+                            }
+                          },
+                          children: [
+                            transcriptContent,
+                            Align(
+                              alignment: Alignment.topCenter,
+                              child: ConstrainedBox(
+                                constraints: BoxConstraints(maxWidth: contentWidth),
+                                child: BillDetailPane(
+                                  billTitle: vm.relatedBillTitle!,
+                                  billId: vm.relatedBillId,
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+
                   return Column(
                     children: [
                       _buildPlayerTraySection(vm, contentWidth),
-                      Expanded(
-                        child: Align(
-                          alignment: Alignment.topCenter,
-                          child: ConstrainedBox(
-                            constraints: BoxConstraints(maxWidth: contentWidth),
-                            child: Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  Expanded(child: _buildTranscriptList(vm)),
-                                  _buildMinimap(vm),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
+                      Expanded(child: mainContent),
                     ],
                   );
                 },
