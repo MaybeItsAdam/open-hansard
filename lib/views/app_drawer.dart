@@ -8,9 +8,19 @@ import 'house_seating_view.dart';
 import 'saved_speeches_view.dart';
 import 'search_view.dart';
 import 'settings_view.dart';
+import 'standing_orders_view.dart';
 
 /// The top-level sections reachable from the navigation drawer.
-enum AppDestination { debates, search, lawsTimeline, bills, map, seating, saved }
+enum AppDestination {
+  debates,
+  search,
+  lawsTimeline,
+  bills,
+  map,
+  seating,
+  standingOrders,
+  saved,
+}
 
 /// Shared navigation drawer for the app's main views.
 ///
@@ -69,7 +79,7 @@ class AppDrawer extends StatelessWidget {
             _tile(
               context,
               icon: Icons.gavel_outlined,
-              label: 'Laws Timeline',
+              label: 'Acts of Parliament',
               destination: AppDestination.lawsTimeline,
             ),
             _tile(
@@ -89,6 +99,12 @@ class AppDrawer extends StatelessWidget {
               icon: Icons.event_seat_outlined,
               label: 'Chamber Seating',
               destination: AppDestination.seating,
+            ),
+            _tile(
+              context,
+              icon: Icons.menu_book_outlined,
+              label: 'Standing Orders',
+              destination: AppDestination.standingOrders,
             ),
             _tile(
               context,
@@ -157,6 +173,8 @@ class AppDrawer extends StatelessWidget {
         _replaceWith(context, const ConstituencyMapView());
       case AppDestination.seating:
         _replaceWith(context, const HouseSeatingView());
+      case AppDestination.standingOrders:
+        _replaceWith(context, const StandingOrdersView());
       case AppDestination.saved:
         // Saved is a leaf screen with its own back button.
         Navigator.of(context).push(
