@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:open_hansard/utils/council_control.dart';
+import 'package:open_parliament/utils/council_control.dart';
 
 void main() {
   group('parseCouncils', () {

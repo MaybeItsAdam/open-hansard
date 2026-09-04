@@ -194,6 +194,9 @@ class ParliamentaryDataService {
   Future<List<Map<String, dynamic>>> fetchBillNews(int id) =>
       _billsApi.fetchBillNews(id);
 
+  Future<List<Map<String, dynamic>>> fetchBillPublications(int id) =>
+      _billsApi.fetchBillPublications(id);
+
   Future<List<BoundaryPolygon>> fetchConstituencyBoundaries() =>
       _boundaryService.loadBoundaries(BoundaryType.constituency);
 

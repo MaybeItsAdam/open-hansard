@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:open_hansard/utils/geojson_boundaries.dart';
+import 'package:open_parliament/utils/geojson_boundaries.dart';
 
 void main() {
   test('parses polygon and multipolygon boundaries', () {

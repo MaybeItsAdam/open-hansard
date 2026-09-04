@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:open_hansard/models/recess_period.dart';
-import 'package:open_hansard/services/parliamentary_data_service.dart';
-import 'package:open_hansard/viewmodels/date_selector_viewmodel.dart';
-import 'package:open_hansard/widgets/sitting_day_calendar.dart';
+import 'package:open_parliament/models/recess_period.dart';
+import 'package:open_parliament/services/parliamentary_data_service.dart';
+import 'package:open_parliament/viewmodels/date_selector_viewmodel.dart';
+import 'package:open_parliament/widgets/sitting_day_calendar.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 /// A service stand-in: the calendar only ever calls `sittingDaysInMonth` on the

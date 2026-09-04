@@ -838,6 +838,7 @@ class DateSelectorViewModel extends ChangeNotifier {
     if (speech.isSittingStartAnnouncement) return false;
     if (speech.isTimestamp) return false;
     if (speech.isDateHeading) return false;
+    if (speech.isProceduralText) return false;
     return speech.speechText.trim().isNotEmpty;
   }
 

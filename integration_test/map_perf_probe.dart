@@ -15,9 +15,9 @@ import 'package:integration_test/integration_test.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 
-import 'package:open_hansard/services/parliamentary_data_service.dart';
-import 'package:open_hansard/utils/map_tiles.dart';
-import 'package:open_hansard/views/constituency_map_view.dart';
+import 'package:open_parliament/services/parliamentary_data_service.dart';
+import 'package:open_parliament/utils/map_tiles.dart';
+import 'package:open_parliament/views/constituency_map_view.dart';
 
 final GlobalKey _shotKey = GlobalKey();
 

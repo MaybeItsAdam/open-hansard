@@ -13,6 +13,7 @@ import '../utils/council_control.dart';
 import '../utils/map_tiles.dart';
 import '../utils/party_colors.dart' as party_util;
 import '../viewmodels/council_history_viewmodel.dart';
+import '../widgets/animated_pie_chart.dart';
 import '../widgets/control_split_bar.dart';
 import '../widgets/council_control_history_chart.dart';
 import 'councillor_view.dart';
@@ -231,6 +232,11 @@ class _CouncilViewState extends State<CouncilView> {
                   ?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
           if (council.total > 0) ...[
+            AnimatedPieChart(
+              segments: councilSegments(council),
+              centerTitle: 'Seats',
+            ),
+            const SizedBox(height: 14),
             ControlSplitBar(segments: councilSegments(council)),
             const SizedBox(height: 6),
             Text(

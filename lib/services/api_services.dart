@@ -185,7 +185,7 @@ class MembersApiService {
         uri,
         headers: {
           'Accept': 'application/json',
-          'User-Agent': 'open-hansard/1.0',
+          'User-Agent': 'open-parliament/1.0',
         },
       );
       if (response.statusCode != 200) return null;
@@ -1237,6 +1237,27 @@ class BillsApiService {
     }
   }
 
+  /// Fetches publications for a bill (Bill texts, Explanatory Notes, Amendments, Briefing papers, Acts).
+  Future<List<Map<String, dynamic>>> fetchBillPublications(int id) async {
+    final uri = Uri.parse('$_baseUrl/$id/Publications');
+    try {
+      final response = await _client.getTimed(
+        uri,
+        headers: {'Accept': 'application/json'},
+      );
+      if (response.statusCode != 200) return const [];
+      final body = json.decode(response.body);
+      final items = (body is Map<String, dynamic>)
+          ? (body['publications'] ?? body['items'])
+          : null;
+      if (items is! List) return const [];
+      return items.whereType<Map<String, dynamic>>().toList();
+    } catch (e, st) {
+      _reportSilentFailure(e, st);
+      return const [];
+    }
+  }
+
   /// Fetches upcoming bill sittings from `DateFrom` (defaults to today).
   Future<List<Map<String, dynamic>>> fetchComingUpSittings({
     String? dateFrom,
@@ -1551,7 +1572,7 @@ class CouncilControlApiService {
       uri,
       headers: {
         'Accept': 'text/html',
-        'User-Agent': 'open-hansard/1.0',
+        'User-Agent': 'open-parliament/1.0',
       },
     );
     if (response.statusCode != 200) {
@@ -1622,7 +1643,7 @@ class CouncillorApiService {
         Uri.parse(_url(year)),
         headers: {
           'Accept': 'text/csv',
-          'User-Agent': 'open-hansard/1.0',
+          'User-Agent': 'open-parliament/1.0',
         },
       );
     } on Object catch (e, st) {

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:open_hansard/utils/party_colors.dart' as party_util;
-import 'package:open_hansard/widgets/control_split_bar.dart';
+import 'package:open_parliament/utils/party_colors.dart' as party_util;
+import 'package:open_parliament/widgets/control_split_bar.dart';
 
 void main() {
   Future<void> pump(WidgetTester tester, List<ControlSegment> segments) {

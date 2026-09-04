@@ -8,15 +8,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:provider/provider.dart';
 
-import 'package:open_hansard/models/member.dart';
-import 'package:open_hansard/services/parliamentary_data_service.dart';
-import 'package:open_hansard/services/theme_service.dart';
-import 'package:open_hansard/views/date_selector_view.dart';
-import 'package:open_hansard/views/transcript_view.dart';
-import 'package:open_hansard/views/bills_list_view.dart';
-import 'package:open_hansard/views/house_seating_view.dart';
-import 'package:open_hansard/views/member_view.dart';
-import 'package:open_hansard/views/search_view.dart';
+import 'package:open_parliament/models/member.dart';
+import 'package:open_parliament/services/parliamentary_data_service.dart';
+import 'package:open_parliament/services/theme_service.dart';
+import 'package:open_parliament/views/date_selector_view.dart';
+import 'package:open_parliament/views/transcript_view.dart';
+import 'package:open_parliament/views/bills_list_view.dart';
+import 'package:open_parliament/views/house_seating_view.dart';
+import 'package:open_parliament/views/member_view.dart';
+import 'package:open_parliament/views/search_view.dart';
 
 /// Human-readable date like "Monday, 6 July 2026" — matches the format used
 /// throughout the real app (see DateSelectorView._friendlyDate).

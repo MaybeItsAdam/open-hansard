@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:open_hansard/models/boundary.dart';
-import 'package:open_hansard/utils/area_match.dart';
+import 'package:open_parliament/models/boundary.dart';
+import 'package:open_parliament/utils/area_match.dart';
 
 void main() {
   group('normaliseName', () {

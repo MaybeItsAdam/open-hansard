@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:open_hansard/models/saved_speech.dart';
-import 'package:open_hansard/services/saved_speeches_service.dart';
+import 'package:open_parliament/models/saved_speech.dart';
+import 'package:open_parliament/services/saved_speeches_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 SavedSpeech _speech(String id, {DateTime? savedAt}) => SavedSpeech(

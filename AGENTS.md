@@ -192,7 +192,7 @@ Note: `services/`, `models/`, and most `widgets/` files above have no dedicated 
 
 - **Dart SDK** ≥ 3.7 (see `pubspec.yaml`). Use null safety, records, pattern matching where it improves clarity.
 - **Lints** in `analysis_options.yaml` are stricter than the Flutter default — `prefer_const_*`, `always_declare_return_types`, `use_build_context_synchronously`, `avoid_print`. CI fails on any analyzer issue. Run `flutter analyze` before pushing.
-- **Imports:** prefer **package-relative** (`../services/foo.dart`) within `lib/`. `avoid_relative_lib_imports` is enabled — i.e. don't `import 'package:open_hansard/...'` from inside `lib/`.
+- **Imports:** prefer **package-relative** (`../services/foo.dart`) within `lib/`. `avoid_relative_lib_imports` is enabled — i.e. don't `import 'package:open_parliament/...'` from inside `lib/`.
 - **Comments:** match the existing style — short `///` doc comments on public types and non-obvious methods. Don't add comments that just restate the code. If the *why* isn't obvious from the name, write one line explaining the *why*.
 - **Async UI:** never use a `BuildContext` after an `await` without checking `mounted` (the lint enforces this).
 - **Provider:** state belongs on a `ChangeNotifier` view-model, exposed once at the top of a screen via `ChangeNotifierProvider.value(value: _vm)`. Don't push view-models above the route boundary unless the state is genuinely app-wide (`ThemeService` and `SavedSpeechesService` are, individual transcripts are not).

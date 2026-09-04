@@ -6,9 +6,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../services/parliamentary_data_service.dart';
+import '../utils/bill_helpers.dart';
 import '../utils/house_colors.dart';
 import '../utils/party_colors.dart';
 import '../utils/speech_timecodes.dart';
+import '../utils/standing_order_helpers.dart';
 import '../viewmodels/date_selector_viewmodel.dart';
 import '../widgets/sitting_day_calendar.dart';
 import 'app_drawer.dart';
@@ -43,6 +45,7 @@ class _DateSelectorViewState extends State<DateSelectorView> {
   // height) have room for a 2-line title — see _DebateCardContent, which
   // always allows 2 title lines on narrow screens regardless of card height.
   static const double _minDebateCardHeight = 92;
+  static const double _maxDebateCardHeight = 240;
   static const double _pixelsPerMinute = 3.5;
 
   /// True until [_initializeLandingDay] resolves. While `true`, the
@@ -432,6 +435,13 @@ class _DateSelectorViewState extends State<DateSelectorView> {
     DateTime day, {
     bool showVenue = false,
   }) {
+    if (isCompactDebateItem(
+      durationMinutes: item.durationMinutes,
+      contributionCount: item.contributionCount,
+      title: item.title,
+    )) {
+      return _buildCompactDebateCardRow(item, day, showVenue: showVenue);
+    }
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: SizedBox(
@@ -445,10 +455,171 @@ class _DateSelectorViewState extends State<DateSelectorView> {
     );
   }
 
+  Widget _buildCompactDebateCardRow(
+    DebateFeedItem item,
+    DateTime day, {
+    bool showVenue = false,
+  }) {
+    final stage = detectBillStage(item.title);
+    final isBill = item.relatedBillTitle != null;
+    final IconData leadingIcon =
+        stage != null
+            ? Icons.gavel
+            : (isBill
+                ? Icons.article
+                : (isProceduralTitle(item.title)
+                    ? Icons.description_outlined
+                    : Icons.chat_bubble_outline));
+
+    final theme = Theme.of(context);
+
+                final detectedSo =
+                    StandingOrderHelpers.detectStandingOrders(item.title);
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Container(
+                    constraints: const BoxConstraints(minHeight: 52),
+                    child: _HouseAccentCard(
+                      house: item.house,
+                      onTap: () =>
+                          _navigateToTranscript(day, debateId: item.debateId),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              leadingIcon,
+                              size: 20,
+                              color: _houseAccentColor(item.house),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Row(
+                                    children: [
+                                      if (stage != null) ...[
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          margin: const EdgeInsets.only(
+                                            right: 6,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: theme
+                                                .colorScheme.secondaryContainer,
+                                            borderRadius:
+                                                BorderRadius.circular(4),
+                                          ),
+                                          child: Text(
+                                            stage,
+                                            style: theme.textTheme.labelSmall
+                                                ?.copyWith(
+                                              fontWeight: FontWeight.bold,
+                                              color: theme
+                                                  .colorScheme
+                                                  .onSecondaryContainer,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                      Expanded(
+                                        child: Tooltip(
+                                          message: item.title,
+                                          child: Text(
+                                            item.title,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    _compactMetaLabel(item, showVenue),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color:
+                                          theme.colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (detectedSo.isNotEmpty) ...[
+                              const SizedBox(width: 6),
+                              _ActionChipLink(
+                                icon: Icons.gavel_outlined,
+                                label: detectedSo.first.shortCode,
+                                onTap: () =>
+                                    StandingOrderHelpers.showStandingOrderSheet(
+                                  context,
+                                  detectedSo.first,
+                                ),
+                              ),
+                            ],
+                            if (item.relatedBillTitle != null) ...[
+                              const SizedBox(width: 6),
+                              _ActionChipLink(
+                                icon: Icons.article,
+                                label: 'View bill',
+                                onTap: () => _openBill(
+                                  context,
+                                  item.relatedBillTitle!,
+                                ),
+                              ),
+                            ],
+                            const SizedBox(width: 4),
+                            const Icon(Icons.chevron_right, size: 20),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+  }
+
+  void _openBill(BuildContext context, String billTitle) {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => BillView(billTitle: billTitle)));
+  }
+
+  static String _compactMetaLabel(DebateFeedItem item, bool showVenue) {
+    final parts = <String>[];
+    if (showVenue) {
+      parts.add(_feedGroupFor(item.house, item.section).name);
+    }
+    if (item.contributionCount > 0) {
+      parts.add(
+        '${item.contributionCount} ${item.contributionCount == 1 ? 'contribution' : 'contributions'}',
+      );
+    } else {
+      parts.add('Formal proceeding');
+    }
+    if (item.durationMinutes > 0) {
+      parts.add(item.durationLabel);
+    }
+    return parts.join('  ·  ');
+  }
+
   double _debateCardHeight(int minutes) {
     final clampedMinutes = minutes <= 0 ? 1 : minutes;
     final scaled = clampedMinutes * _pixelsPerMinute;
-    return scaled < _minDebateCardHeight ? _minDebateCardHeight : scaled;
+    return scaled.clamp(_minDebateCardHeight, _maxDebateCardHeight);
   }
 
   Future<void> _pickDate(DateSelectorViewModel vm, DateTime selectedDay) async {
@@ -763,6 +934,8 @@ class _DebateCardContent extends StatelessWidget {
           item: item,
         );
 
+        final stage = detectBillStage(item.title);
+
         return Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
           child: Column(
@@ -784,6 +957,26 @@ class _DebateCardContent extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 8),
+                  ],
+                  if (stage != null) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      margin: const EdgeInsets.only(right: 6, top: 1),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.secondaryContainer,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        stage,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.onSecondaryContainer,
+                        ),
+                      ),
+                    ),
                   ],
                   Expanded(
                     // Even at 2 lines, long bill/motion titles can still be

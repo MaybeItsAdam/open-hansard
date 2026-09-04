@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
-import 'package:open_hansard/services/api_services.dart';
+import 'package:open_parliament/services/api_services.dart';
 
 // ─── Minimal HTTP client stub ─────────────────────────────────────────────
 
@@ -677,6 +677,44 @@ void main() {
 
       expect(bills, hasLength(1));
       expect(bills.first['shortTitle'], 'Retry Act 2026');
+    });
+
+    test('fetchBillPublications parses publication list from API payload', () async {
+      final stub = _StubHttpClient([
+        _jsonResponse({
+          'publications': [
+            {
+              'id': 5001,
+              'house': 'Commons',
+              'title': 'Bill 012 2023-24 (as introduced)',
+              'publicationType': {'id': 5, 'name': 'Bill'},
+              'displayDate': '2024-02-23T00:00:00',
+              'links': [
+                {
+                  'id': 1,
+                  'title': 'Web HTML',
+                  'url': 'https://example.com/bill.html',
+                  'contentType': 'text/html'
+                }
+              ],
+              'files': [
+                {
+                  'id': 10,
+                  'filename': 'bill.pdf',
+                  'contentType': 'application/pdf',
+                  'contentLength': 12345
+                }
+              ]
+            }
+          ]
+        })
+      ]);
+      final service = BillsApiService(client: stub);
+      final pubs = await service.fetchBillPublications(123);
+
+      expect(pubs, hasLength(1));
+      expect(pubs.first['id'], 5001);
+      expect(pubs.first['title'], 'Bill 012 2023-24 (as introduced)');
     });
   });
 }

@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:open_hansard/models/member.dart';
-import 'package:open_hansard/utils/seat_layout.dart';
-import 'package:open_hansard/viewmodels/house_seating_viewmodel.dart' show HouseType;
+import 'package:open_parliament/models/member.dart';
+import 'package:open_parliament/utils/seat_layout.dart';
+import 'package:open_parliament/viewmodels/house_seating_viewmodel.dart' show HouseType;
 
 void main() {
   test('buildHemicycleLayout returns empty for zero seats', () {

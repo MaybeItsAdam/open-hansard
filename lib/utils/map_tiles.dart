@@ -24,7 +24,7 @@ TileLayer _carto(BuildContext context, String url, String store) {
     urlTemplate: url,
     subdomains: _subdomains,
     retinaMode: RetinaMode.isHighDensity(context),
-    userAgentPackageName: 'open_hansard', tileDisplay: const TileDisplay.fadeIn(),
+    userAgentPackageName: 'open_parliament', tileDisplay: const TileDisplay.fadeIn(),
     tileProvider: FMTCTileProvider(
       stores: {store: BrowseStoreStrategy.readUpdateCreate},
     ),

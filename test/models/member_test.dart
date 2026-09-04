@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:open_hansard/models/member.dart';
+import 'package:open_parliament/models/member.dart';
 
 void main() {
   group('Member', () {

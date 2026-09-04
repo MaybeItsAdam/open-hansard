@@ -70,7 +70,7 @@ void _startApp({
   required StartupPrefetchService startupPrefetchService,
 }) {
   runApp(
-    OpenHansardApp(
+    OpenParliamentApp(
       themeService: themeService,
       savedSpeechesService: savedSpeechesService,
       startupPrefetchService: startupPrefetchService,
@@ -99,12 +99,12 @@ void _startApp({
 ///    and never re-fetched after the initial download.
 ///
 /// See [ParliamentaryDataService] for full data-layer documentation.
-class OpenHansardApp extends StatelessWidget {
+class OpenParliamentApp extends StatelessWidget {
   final ThemeService themeService;
   final SavedSpeechesService savedSpeechesService;
   final StartupPrefetchService startupPrefetchService;
 
-  const OpenHansardApp({
+  const OpenParliamentApp({
     super.key,
     required this.themeService,
     required this.savedSpeechesService,

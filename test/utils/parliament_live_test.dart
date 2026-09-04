@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:open_hansard/models/parliament_live_event.dart';
-import 'package:open_hansard/utils/parliament_live.dart';
+import 'package:open_parliament/models/parliament_live_event.dart';
+import 'package:open_parliament/utils/parliament_live.dart';
 
 void main() {
   group('parliamentLiveSearchUrl', () {

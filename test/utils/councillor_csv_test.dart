@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:open_hansard/models/councillor.dart';
-import 'package:open_hansard/utils/councillor_csv.dart';
+import 'package:open_parliament/models/councillor.dart';
+import 'package:open_parliament/utils/councillor_csv.dart';
 
 void main() {
   group('parseCouncillors', () {

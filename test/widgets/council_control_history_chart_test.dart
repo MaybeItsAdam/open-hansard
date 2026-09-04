@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:open_hansard/models/council.dart';
-import 'package:open_hansard/viewmodels/council_history_viewmodel.dart';
-import 'package:open_hansard/widgets/council_control_history_chart.dart';
+import 'package:open_parliament/models/council.dart';
+import 'package:open_parliament/viewmodels/council_history_viewmodel.dart';
+import 'package:open_parliament/widgets/council_control_history_chart.dart';
 
 void main() {
   CouncilYearControl year(int y, Map<String, int> seats) => CouncilYearControl(

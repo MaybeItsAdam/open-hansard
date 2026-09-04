@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 
-import 'package:open_hansard/views/parliament_live_view.dart';
+import 'package:open_parliament/views/parliament_live_view.dart';
 
 void main() {
   testWidgets(

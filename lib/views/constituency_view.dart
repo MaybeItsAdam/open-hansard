@@ -11,6 +11,7 @@ import '../services/parliamentary_data_service.dart';
 import '../utils/map_tiles.dart';
 import '../utils/party_colors.dart' as party_util;
 import '../viewmodels/constituency_viewmodel.dart';
+import '../widgets/animated_pie_chart.dart';
 import '../widgets/control_split_bar.dart';
 import 'member_view.dart';
 
@@ -224,6 +225,14 @@ class _ConstituencyViewState extends State<ConstituencyView> {
           ],
           const SizedBox(height: 14),
           if (result.candidates.isNotEmpty) ...[
+            AnimatedPieChart(
+              segments: [
+                for (final c in result.candidates)
+                  (label: c.party, value: c.votes),
+              ],
+              centerTitle: 'Votes',
+            ),
+            const SizedBox(height: 14),
             ControlSplitBar(
               segments: [
                 for (final c in result.candidates)

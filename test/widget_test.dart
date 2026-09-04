@@ -11,20 +11,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
-import 'package:open_hansard/models/boundary.dart';
-import 'package:open_hansard/models/council.dart';
-import 'package:open_hansard/models/councillor.dart';
-import 'package:open_hansard/models/councillor_profile.dart';
-import 'package:open_hansard/models/debate.dart';
-import 'package:open_hansard/models/election_result.dart';
-import 'package:open_hansard/models/member.dart';
-import 'package:open_hansard/models/parliament_live_event.dart';
-import 'package:open_hansard/models/recess_period.dart';
-import 'package:open_hansard/models/speech.dart';
-import 'package:open_hansard/services/parliamentary_data_service.dart';
-import 'package:open_hansard/services/theme_service.dart';
-import 'package:open_hansard/viewmodels/date_selector_viewmodel.dart';
-import 'package:open_hansard/views/date_selector_view.dart';
+import 'package:open_parliament/models/boundary.dart';
+import 'package:open_parliament/models/council.dart';
+import 'package:open_parliament/models/councillor.dart';
+import 'package:open_parliament/models/councillor_profile.dart';
+import 'package:open_parliament/models/debate.dart';
+import 'package:open_parliament/models/election_result.dart';
+import 'package:open_parliament/models/member.dart';
+import 'package:open_parliament/models/parliament_live_event.dart';
+import 'package:open_parliament/models/recess_period.dart';
+import 'package:open_parliament/models/speech.dart';
+import 'package:open_parliament/services/parliamentary_data_service.dart';
+import 'package:open_parliament/services/theme_service.dart';
+import 'package:open_parliament/viewmodels/date_selector_viewmodel.dart';
+import 'package:open_parliament/views/date_selector_view.dart';
 
 class _FakeParliamentaryDataService implements ParliamentaryDataService {
   /// Per-date scripted content, keyed by `YYYY-MM-DD`. Dates not present
@@ -83,6 +83,9 @@ class _FakeParliamentaryDataService implements ParliamentaryDataService {
 
   @override
   Future<List<Map<String, dynamic>>> fetchBillNews(int id) async => const [];
+
+  @override
+  Future<List<Map<String, dynamic>>> fetchBillPublications(int id) async => const [];
 
   @override
   Future<List<BoundaryPolygon>> fetchConstituencyBoundaries() async => const [];

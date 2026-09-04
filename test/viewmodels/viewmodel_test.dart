@@ -1,28 +1,28 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:open_hansard/models/boundary.dart';
-import 'package:open_hansard/models/council.dart';
-import 'package:open_hansard/models/councillor.dart';
-import 'package:open_hansard/models/councillor_profile.dart';
-import 'package:open_hansard/models/debate.dart';
-import 'package:open_hansard/models/election_result.dart';
-import 'package:open_hansard/models/member.dart';
-import 'package:open_hansard/models/parliament_live_event.dart';
-import 'package:open_hansard/models/recess_period.dart';
-import 'package:open_hansard/models/speech.dart';
-import 'package:open_hansard/services/parliamentary_data_service.dart';
+import 'package:open_parliament/models/boundary.dart';
+import 'package:open_parliament/models/council.dart';
+import 'package:open_parliament/models/councillor.dart';
+import 'package:open_parliament/models/councillor_profile.dart';
+import 'package:open_parliament/models/debate.dart';
+import 'package:open_parliament/models/election_result.dart';
+import 'package:open_parliament/models/member.dart';
+import 'package:open_parliament/models/parliament_live_event.dart';
+import 'package:open_parliament/models/recess_period.dart';
+import 'package:open_parliament/models/speech.dart';
+import 'package:open_parliament/services/parliamentary_data_service.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:open_hansard/utils/party_colors.dart' as party_util;
-import 'package:open_hansard/viewmodels/bill_viewmodel.dart';
-import 'package:open_hansard/viewmodels/bills_list_viewmodel.dart';
-import 'package:open_hansard/viewmodels/bills_timeline_viewmodel.dart';
-import 'package:open_hansard/viewmodels/constituency_map_viewmodel.dart';
-import 'package:open_hansard/viewmodels/constituency_viewmodel.dart';
-import 'package:open_hansard/viewmodels/council_history_viewmodel.dart';
-import 'package:open_hansard/viewmodels/date_selector_viewmodel.dart';
-import 'package:open_hansard/viewmodels/house_seating_viewmodel.dart';
-import 'package:open_hansard/viewmodels/member_viewmodel.dart';
-import 'package:open_hansard/viewmodels/search_viewmodel.dart';
-import 'package:open_hansard/viewmodels/transcript_viewmodel.dart';
+import 'package:open_parliament/utils/party_colors.dart' as party_util;
+import 'package:open_parliament/viewmodels/bill_viewmodel.dart';
+import 'package:open_parliament/viewmodels/bills_list_viewmodel.dart';
+import 'package:open_parliament/viewmodels/bills_timeline_viewmodel.dart';
+import 'package:open_parliament/viewmodels/constituency_map_viewmodel.dart';
+import 'package:open_parliament/viewmodels/constituency_viewmodel.dart';
+import 'package:open_parliament/viewmodels/council_history_viewmodel.dart';
+import 'package:open_parliament/viewmodels/date_selector_viewmodel.dart';
+import 'package:open_parliament/viewmodels/house_seating_viewmodel.dart';
+import 'package:open_parliament/viewmodels/member_viewmodel.dart';
+import 'package:open_parliament/viewmodels/search_viewmodel.dart';
+import 'package:open_parliament/viewmodels/transcript_viewmodel.dart';
 
 // ─── Manual mocks ──────────────────────────────────────────────────────────
 
@@ -77,6 +77,7 @@ class _FakeParliamentaryDataService implements ParliamentaryDataService {
   Map<String, dynamic>? billDetailResult;
   List<Map<String, dynamic>> billStagesResult = const [];
   List<Map<String, dynamic>> billNewsResult = const [];
+  List<Map<String, dynamic>> billPublicationsResult = const [];
   List<Map<String, dynamic>> recentBillsResult = const [];
   List<Map<String, dynamic>> billsTimelineResult = const [];
   List<Map<String, dynamic>> searchBillsResult = const [];
@@ -124,6 +125,10 @@ class _FakeParliamentaryDataService implements ParliamentaryDataService {
   @override
   Future<List<Map<String, dynamic>>> fetchBillNews(int id) async =>
       billNewsResult;
+
+  @override
+  Future<List<Map<String, dynamic>>> fetchBillPublications(int id) async =>
+      billPublicationsResult;
 
   @override
   Future<List<BoundaryPolygon>> fetchConstituencyBoundaries() async =>
@@ -2579,6 +2584,52 @@ void main() {
         await vm.loadOlder();
       }
       expect(vm.canLoadOlder, isFalse);
+    });
+  });
+
+  group('BillViewModel', () {
+    late _FakeParliamentaryDataService fakeService;
+
+    setUp(() {
+      fakeService = _FakeParliamentaryDataService();
+    });
+
+    test('load populates bill details and publications', () async {
+      fakeService.billIdResult = 99;
+      fakeService.billDetailResult = {
+        'billId': 99,
+        'shortTitle': 'Sample Bill',
+        'longTitle': 'A Bill to sample features.',
+        'currentHouse': 'Commons',
+        'originatingHouse': 'Commons',
+        'isAct': false,
+      };
+      fakeService.billPublicationsResult = [
+        {
+          'id': 100,
+          'house': 'Commons',
+          'title': 'Bill 99 (as introduced)',
+          'publicationType': {'id': 5, 'name': 'Bill'},
+          'displayDate': '2024-01-01T00:00:00',
+          'files': [
+            {
+              'id': 1,
+              'filename': 'bill.html',
+              'contentType': 'text/html',
+              'contentLength': 1000
+            }
+          ]
+        }
+      ];
+
+      final vm = BillViewModel(fakeService, billTitle: 'Sample Bill');
+      await vm.load();
+
+      expect(vm.isLoading, isFalse);
+      expect(vm.bill?.shortTitle, 'Sample Bill');
+      expect(vm.publications, hasLength(1));
+      expect(vm.primaryBillPublication?.title, 'Bill 99 (as introduced)');
+      expect(vm.primaryBillPublication?.htmlFile?.filename, 'bill.html');
     });
   });
 }

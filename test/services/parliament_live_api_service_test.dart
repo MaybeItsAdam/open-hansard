@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:open_hansard/services/api_services.dart';
+import 'package:open_parliament/services/api_services.dart';
 
 void main() {
   group('ParliamentLiveApiService.parseSearchHtml', () {
