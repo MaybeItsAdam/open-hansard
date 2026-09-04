@@ -1,3 +1,10 @@
+## [0.8.2](https://github.com/MaybeItsSoftware/open-parliament/compare/v0.8.1...v0.8.2) (2026-09-04)
+
+
+### Bug Fixes
+
+* **api:** retry transient connection drops and add User-Agent ([9640a6a](https://github.com/MaybeItsSoftware/open-parliament/commit/9640a6a619b12f6b1c7dcbaa064824285fc8c4e5))
+
 ## [0.8.1](https://github.com/MaybeItsSoftware/open-parliament/compare/v0.8.0...v0.8.1) (2026-09-03)
 
 
