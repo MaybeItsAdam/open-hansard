@@ -645,4 +645,60 @@ void main() {
       expect(periods, isEmpty);
     });
   });
+
+  group('BillsApiService transient retry resilience', () {
+    test('retries on ClientException connection closed before full header was received and succeeds', () async {
+      final stub = _ExceptionThrowingClient([
+        http.ClientException('Connection closed before full header was received', Uri.parse('https://bills-api.parliament.uk/api/v1/Bills')),
+        _jsonResponse({
+          'items': [
+            {'billId': 101, 'shortTitle': 'Resilience Act 2026', 'isAct': true}
+          ]
+        }),
+      ]);
+      final service = BillsApiService(client: stub);
+      final bills = await service.fetchBillsTimeline();
+
+      expect(bills, hasLength(1));
+      expect(bills.first['shortTitle'], 'Resilience Act 2026');
+    });
+
+    test('retries on transient 503 error and succeeds on second attempt', () async {
+      final stub = _StubHttpClient([
+        http.Response('Service Unavailable', 503),
+        _jsonResponse({
+          'items': [
+            {'billId': 102, 'shortTitle': 'Retry Act 2026', 'isAct': true}
+          ]
+        }),
+      ]);
+      final service = BillsApiService(client: stub);
+      final bills = await service.fetchBillsTimeline();
+
+      expect(bills, hasLength(1));
+      expect(bills.first['shortTitle'], 'Retry Act 2026');
+    });
+  });
+}
+
+class _ExceptionThrowingClient extends http.BaseClient {
+  final List<Object> responsesOrExceptions;
+  int _index = 0;
+
+  _ExceptionThrowingClient(this.responsesOrExceptions);
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    final item = responsesOrExceptions[_index.clamp(0, responsesOrExceptions.length - 1)];
+    _index++;
+    if (item is Exception) {
+      throw item;
+    }
+    final resp = item as http.Response;
+    return http.StreamedResponse(
+      Stream.value(resp.bodyBytes),
+      resp.statusCode,
+      headers: resp.headers,
+    );
+  }
 }

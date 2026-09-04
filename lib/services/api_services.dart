@@ -30,11 +30,74 @@ const Duration _defaultHttpTimeout = Duration(seconds: 20);
 /// stage, so this can be much longer than the recent-bills list TTL.
 const Duration _billDetailCacheTtl = Duration(hours: 6);
 
-/// Adds a bounded-time `get` to [http.Client] so every call site below gets
-/// the same timeout without repeating `.timeout(...)` everywhere.
+/// Set of HTTP status codes considered transient server errors.
+const Set<int> _transientStatusCodes = {502, 503, 504};
+
+/// Determines whether an error encountered during an HTTP request is transient
+/// (e.g. closed persistent connection, socket exception, timeout) and safe to retry.
+bool _isTransientNetworkError(Object error) {
+  if (error is TimeoutException || error is http.ClientException) return true;
+  final msg = error.toString().toLowerCase();
+  return msg.contains('connection closed') ||
+      msg.contains('socketexception') ||
+      msg.contains('httpexception') ||
+      msg.contains('clientexception') ||
+      msg.contains('software caused connection abort') ||
+      msg.contains('connection reset') ||
+      msg.contains('broken pipe');
+}
+
+/// Adds a bounded-time, retry-enabled `get` to [http.Client] so every call site below gets
+/// timeout handling and resilience against closed persistent connections, socket resets,
+/// and transient gateway errors without repeating retry logic everywhere.
 extension _TimedHttpGet on http.Client {
-  Future<http.Response> getTimed(Uri url, {Map<String, String>? headers}) {
-    return get(url, headers: headers).timeout(_defaultHttpTimeout);
+  Future<http.Response> getTimed(
+    Uri url, {
+    Map<String, String>? headers,
+    int maxAttempts = 3,
+    Duration initialRetryDelay = const Duration(milliseconds: 200),
+  }) async {
+    final mergedHeaders = <String, String>{
+      'User-Agent': 'open-parliament/1.0',
+      ...?headers,
+    };
+
+    Object? lastError;
+    StackTrace? lastStackTrace;
+
+    for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        final response = await get(
+          url,
+          headers: mergedHeaders,
+        ).timeout(_defaultHttpTimeout);
+
+        if (attempt < maxAttempts &&
+            _transientStatusCodes.contains(response.statusCode)) {
+          await Future<void>.delayed(initialRetryDelay * attempt);
+          continue;
+        }
+        return response;
+      } catch (e, st) {
+        lastError = e;
+        lastStackTrace = st;
+        if (attempt < maxAttempts && _isTransientNetworkError(e)) {
+          await Future<void>.delayed(initialRetryDelay * attempt);
+          continue;
+        }
+        rethrow;
+      }
+    }
+    if (lastError != null) {
+      Error.throwWithStackTrace(
+        lastError,
+        lastStackTrace ?? StackTrace.current,
+      );
+    }
+    throw http.ClientException(
+      'HTTP request failed after $maxAttempts attempts',
+      url,
+    );
   }
 }
 
